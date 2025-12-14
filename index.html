@@ -12,10 +12,10 @@
     
     <style>
         body { font-family: Arial, sans-serif; background-color: #f0f4f8; padding: 20px; }
-        .planner-container { max-width: 1400px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .planner-container { max-width: 1500px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
         h2 { text-align: center; color: #333; border-bottom: 2px solid #5d9cec; padding-bottom: 10px; }
         .planner-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        .planner-table th, .planner-table td { border: 1px solid #ccc; padding: 10px; text-align: center; font-size: 0.9em; }
+        .planner-table th, .planner-table td { border: 1px solid #ccc; padding: 8px; text-align: center; font-size: 0.9em; }
         .planner-table thead th { background-color: #5d9cec; color: white; font-weight: bold; text-transform: uppercase; }
         .planner-table tbody tr:nth-child(even) { background-color: #f7f7f7; }
         
@@ -32,7 +32,7 @@
         }
 
         /* Contenedor de la Imagen */
-        .model-image-container { width: 80px; height: 80px; margin: 0 auto; border: 1px solid #aaa; background-color: #eee; display: flex; align-items: center; justify-content: center; font-size: 0.7em; color: #555; overflow: hidden; }
+        .model-image-container { width: 60px; height: 60px; margin: 0 auto; border: 1px solid #aaa; background-color: #eee; display: flex; align-items: center; justify-content: center; font-size: 0.7em; color: #555; overflow: hidden; }
         .model-image-container img { width: 100%; height: 100%; object-fit: contain; }
         
         /* Estilos de error / WhatsApp */
@@ -51,7 +51,18 @@
             text-decoration: none;
             display: inline-flex;
             align-items: center;
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
             font-size: 0.9em;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -62,7 +73,7 @@
         
         <div class="flex justify-end mb-4">
             <button onclick="addRow()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition">
-                ➕ Añadir Línea
+                ➕ Añadir Línea de Producción
             </button>
         </div>
 
@@ -71,20 +82,23 @@
                 <tr>
                     <th rowspan="2">#</th>
                     <th rowspan="2">Imagen</th>
-                    <th colspan="3">Datos de Entrada (Encargada)</th>
+                    <th colspan="4">Datos de Entrada (Encargada)</th>
                     <th colspan="7">Datos de Ficha Técnica (Llenado Automático)</th>
+                    <th rowspan="2">ACCIÓN</th>
                 </tr>
                 <tr>
-                    <th class="input-cell">FECHA DE ENTREGA (Referencia)</th>
-                    <th class="input-cell">PARTIDA (Generador)</th>
-                    <th class="input-cell">MODELO/MAQUINA</th>
-                    <th>CLIENTE</th>
-                    <th>DESCRIPCIÓN</th>
+                    <th class="input-cell" style="width: 100px;">FECHA DE ENTREGA</th>
+                    <th class="input-cell" style="width: 100px;">PARTIDA</th>
+                    <th class="input-cell" style="width: 150px;">MODELO/MAQ (Ej: B01S/38)</th>
+                    <th class="input-cell" style="width: 80px;">CANTIDAD (Pzs)</th>
+                    
+                    <th>CLIENTE / MODELO</th>
+                    <th>PIEZA / DESCRIPCIÓN</th>
                     <th>TALLA</th>
                     <th>PESO (g)</th>
                     <th>TIEMPO (min)</th>
                     <th>ENHEBRADO HILO 1/2</th>
-                    <th>ESTADO / ACCIÓN</th>
+                    <th>ESTADO</th>
                 </tr>
             </thead>
             <tbody id="planner-tbody">
@@ -93,19 +107,23 @@
     </div>
 
     <script>
-        // --- CONFIGURACIÓN DE FIREBASE (Usa tus credenciales de CIRINEO) ---
+        // --- CONFIGURACIÓN DE FIREBASE (Reemplaza con tus credenciales) ---
         const firebaseConfig = {
-            apiKey: "TU_API_KEY", // Reemplaza con tu clave
-            authDomain: "TU_AUTH_DOMAIN", // Reemplaza con tu dominio
-            projectId: "cirineo-v3", // Debería ser tu ID de proyecto
+            apiKey: "TU_API_KEY", 
+            authDomain: "TU_AUTH_DOMAIN",
+            projectId: "cirineo-v3", 
             storageBucket: "TU_STORAGE_BUCKET",
             messagingSenderId: "TU_MESSAGING_SENDER_ID",
             appId: "TU_APP_ID"
         };
-        firebase.initializeApp(firebaseConfig);
+        // Inicialización
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         const db = firebase.firestore();
-        const FICHA_COLLECTION = "fichas_tecnicas_dev"; // Colección de Desarrollo (Tu Almacén)
-        const PROGRAMMER_WA = '524451229267'; // Tu número de WhatsApp
+        const FICHA_COLLECTION = "fichas_tecnicas_dev"; // Colección de Lectura
+        const PLANNER_COLLECTION = "planificador_mensual_data"; // Colección de Guardado (propia)
+        const PROGRAMMER_WA = '524451229267'; // Número de WhatsApp para solicitudes
 
         let rowCounter = 0;
 
@@ -114,12 +132,11 @@
         async function searchFicha(rowId) {
             const maquinaModeloInput = document.getElementById(`input-maquina-modelo-${rowId}`).value.trim().toUpperCase();
             
-            // Limpiar celdas de resultado y estado
             clearRowResults(rowId);
             
             if (maquinaModeloInput.length === 0) return;
             
-            // Asumimos el formato [MODELO]/[MAQUINA] o solo [MODELO]
+            // Formato esperado: MODELO/MAQUINA (Ej: B01S/38) o solo MODELO (Ej: M029)
             let modelo, maquina;
             const parts = maquinaModeloInput.split('/');
             modelo = parts[0];
@@ -128,6 +145,7 @@
             if (modelo.length === 0) return;
             
             document.getElementById(`status-${rowId}`).textContent = 'Buscando...';
+            document.getElementById(`action-${rowId}`).innerHTML = ''; // Limpiar botón de acción
 
             try {
                 const doc = await db.collection(FICHA_COLLECTION).doc(modelo).get();
@@ -138,36 +156,45 @@
                 }
 
                 const fichaData = doc.data();
+                const detalles = fichaData.configuraciones_detalle || [];
                 
-                // Si no se especificó máquina, tomamos la primera configuración como referencia
-                let config;
-                let maquinaUsada = maquina;
-                
+                let targetConfig = null;
+                let maquinaUsada = '';
+
                 if (maquina.length > 0) {
-                    config = fichaData.configuraciones_maquina[maquina];
-                } else {
-                    // Si no hay máquina, intentamos usar la primera que encontremos
-                    const allConfigs = Object.entries(fichaData.configuraciones_maquina);
-                    if (allConfigs.length > 0) {
-                        maquinaUsada = allConfigs[0][0]; // ID de la máquina
-                        config = allConfigs[0][1]; // El objeto de configuración
-                    }
+                    // Buscar la primera pieza que coincida con la máquina (principal o compatible)
+                    targetConfig = detalles.find(config => {
+                        const principal = config.maquina_principal === maquina;
+                        const compatible = config.maquinas_compatibles && config.maquinas_compatibles.includes(maquina);
+                        return principal || compatible;
+                    });
+                    maquinaUsada = maquina;
+                } else if (detalles.length > 0) {
+                    // Si no se especifica máquina, tomar la primera configuración como referencia
+                    targetConfig = detalles[0];
+                    maquinaUsada = targetConfig.maquina_principal || 'N/D';
                 }
 
-                if (!config) {
-                    // El modelo existe, pero no tiene configuración para la máquina específica
+                if (!targetConfig) {
                     if (maquina.length > 0) {
-                        // Si se especificó una máquina (ej: M029/38) y no se encontró
-                        showWhatsAppButton(rowId, modelo, maquina, `Modelo "${modelo}" existe, pero no está configurado para la máquina #${maquina}.`);
+                        showWhatsAppButton(rowId, modelo, maquina, `Modelo "${modelo}" existe, pero no tiene configuración para la máquina #${maquina}.`);
                     } else {
-                        // Si no se especificó máquina, pero el doc está vacío (improbable si existe)
-                         showWhatsAppButton(rowId, modelo, maquina, `Modelo "${modelo}" encontrado, pero sin configuraciones de máquina.`);
+                        showWhatsAppButton(rowId, modelo, maquina, `Modelo "${modelo}" encontrado, pero no hay detalles de piezas configurados.`);
                     }
                     return;
                 }
                 
                 // Éxito: Rellenar la fila con datos de la configuración
-                populateRow(rowId, fichaData, config, maquinaUsada);
+                populateRow(rowId, fichaData, targetConfig, maquinaUsada);
+                // Adjuntar data para guardar
+                document.getElementById(`row-${rowId}`).dataset.fichaData = JSON.stringify({
+                    modelo: modelo,
+                    config: targetConfig,
+                    maquina_asignada: maquinaUsada
+                });
+                
+                // Mostrar botón de guardar
+                document.getElementById(`action-${rowId}`).innerHTML = `<button onclick="savePlanRow(${rowId})" class="save-btn">Guardar Plan</button>`;
 
             } catch (error) {
                 console.error("Error al buscar la ficha técnica:", error);
@@ -178,15 +205,17 @@
         // --- FUNCIONES DE INTERFAZ Y RELLENO ---
 
         function clearRowResults(rowId) {
-            document.getElementById(`client-${rowId}`).textContent = '';
-            document.getElementById(`desc-${rowId}`).textContent = '';
+            document.getElementById(`client-model-${rowId}`).textContent = '';
+            document.getElementById(`desc-pieza-${rowId}`).textContent = '';
             document.getElementById(`talla-${rowId}`).textContent = '';
             document.getElementById(`peso-${rowId}`).textContent = '';
             document.getElementById(`tiempo-${rowId}`).textContent = '';
             document.getElementById(`enhebrado-${rowId}`).textContent = '';
             document.getElementById(`status-${rowId}`).className = '';
             document.getElementById(`status-${rowId}`).innerHTML = '';
-            
+            document.getElementById(`action-${rowId}`).innerHTML = '';
+            document.getElementById(`row-${rowId}`).dataset.fichaData = '';
+
             const imgEl = document.getElementById(`img-${rowId}`);
             imgEl.src = '';
             imgEl.style.display = 'none';
@@ -194,12 +223,13 @@
         }
 
         function populateRow(rowId, ficha, config, maquina) {
-            document.getElementById(`client-${rowId}`).textContent = ficha.cliente || 'N/A';
-            document.getElementById(`desc-${rowId}`).textContent = ficha.descripcion || 'N/A';
-            document.getElementById(`talla-${rowId}`).textContent = ficha.talla || 'N/A';
+            document.getElementById(`client-model-${rowId}`).textContent = `${ficha.cliente || 'N/A'} / ${ficha.modelo}`;
+            const descripcionCompleta = `${config.pieza || 'Pieza N/A'} (${ficha.descripcion_general || ''})`;
+            document.getElementById(`desc-pieza-${rowId}`).textContent = descripcionCompleta;
             
+            document.getElementById(`talla-${rowId}`).textContent = config.talla || 'N/A';
             document.getElementById(`peso-${rowId}`).textContent = `${config.peso_est_g || 0} g`;
-            document.getElementById(`tiempo-${rowId}`).textContent = `${config.tiempo_est_min || 0} min`;
+            document.getElementById(`tiempo-${rowId}`).textContent = `${config.tiempo_est_min || 'N/D'} min`;
             
             const hilos = `${config.enhebrado?.hilo_1_nombre || 'N/A'} / ${config.enhebrado?.hilo_2_nombre || 'N/A'}`;
             document.getElementById(`enhebrado-${rowId}`).textContent = hilos;
@@ -214,18 +244,17 @@
 
             // Estado
             document.getElementById(`status-${rowId}`).className = 'bg-green-100 font-bold text-green-700';
-            document.getElementById(`status-${rowId}`).textContent = `✅ Listo para Máq. #${maquina}`;
+            document.getElementById(`status-${rowId}`).textContent = `✅ Pieza: ${config.pieza} - Máq. #${maquina}`;
         }
 
         function showWhatsAppButton(rowId, modelo, maquina, mensajeEstandar) {
             const statusCell = document.getElementById(`status-${rowId}`);
             statusCell.className = 'status-cell';
             
-            const maquinaOrigen = Object.keys(statusCell.configuraciones_maquina || {})[0] || ''; // Intenta encontrar una máquina existente
-            const maquinaDestino = maquina || maquinaOrigen; // Si la encargada especificó, la usamos
+            const maquinaDestino = maquina || 'NO ESPECIFICADA';
 
             // Generar el mensaje de WhatsApp
-            const waMessage = `Te encargo la revisión del modelo *${modelo}*. La máquina solicitada es *#${maquinaDestino}* (si aplica). El sistema indica: ${mensajeEstandar} Por favor, verifica y haz el cambio o crea la configuración.`;
+            const waMessage = `Te encargo la revisión del modelo *${modelo}*. La máquina solicitada es *#${maquinaDestino}*. El sistema indica: ${mensajeEstandar} Por favor, verifica y haz el cambio o crea la configuración.`;
             
             const linkWhatsApp = `https://wa.me/${PROGRAMMER_WA}?text=${encodeURIComponent(waMessage)}`;
 
@@ -233,7 +262,7 @@
                 <div style="font-size: 0.8em; margin-bottom: 5px;">${mensajeEstandar}</div>
                 <a href="${linkWhatsApp}" target="_blank" class="whatsapp-btn">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style="width: 18px; margin-right: 5px;">
-                    Solicitar al programador el cambio
+                    Solicitar al programador
                 </a>
             `;
         }
@@ -243,7 +272,8 @@
             const tbody = document.getElementById('planner-tbody');
             const newRow = document.createElement('tr');
             newRow.id = `row-${rowCounter}`;
-            
+            newRow.dataset.rowId = rowCounter; // Almacenar el ID de la fila para referenciar data
+
             newRow.innerHTML = `
                 <td>${rowCounter}</td>
                 <td>
@@ -253,19 +283,100 @@
                     </div>
                 </td>
                 <td class="input-cell"><input type="date" id="input-fecha-entrega-${rowCounter}"></td>
-                <td class="input-cell"><input type="text" id="input-partida-${rowCounter}"></td>
+                <td class="input-cell"><input type="text" id="input-partida-${rowCounter}" placeholder="PARTIDA EJ. 101"></td>
                 <td class="input-cell">
                     <input type="text" id="input-maquina-modelo-${rowCounter}" placeholder="MODELO/MAQ" onchange="searchFicha(${rowCounter})">
                 </td>
-                <td id="client-${rowCounter}"></td>
-                <td id="desc-${rowCounter}"></td>
+                <td class="input-cell"><input type="number" id="input-cantidad-${rowCounter}" placeholder="Pzs" min="1"></td>
+
+                <td id="client-model-${rowCounter}"></td>
+                <td id="desc-pieza-${rowCounter}"></td>
                 <td id="talla-${rowCounter}"></td>
                 <td id="peso-${rowCounter}"></td>
                 <td id="tiempo-${rowCounter}"></td>
                 <td id="enhebrado-${rowCounter}"></td>
-                <td id="status-${rowCounter}"></td>
+                <td id="status-${rowCounter}">Esperando entrada...</td>
+                <td id="action-${rowCounter}"></td>
             `;
             tbody.appendChild(newRow);
+        }
+
+        // --- FUNCIÓN DE GUARDADO DEL PLANIFICADOR ---
+
+        async function savePlanRow(rowId) {
+            const partida = document.getElementById(`input-partida-${rowId}`).value.trim();
+            const fechaEntrega = document.getElementById(`input-fecha-entrega-${rowId}`).value;
+            const cantidad = parseInt(document.getElementById(`input-cantidad-${rowId}`).value);
+            const statusCell = document.getElementById(`status-${rowId}`);
+            const rowElement = document.getElementById(`row-${rowId}`);
+            const fichaDataString = rowElement.dataset.fichaData;
+
+            if (!partida) { statusCell.innerHTML = 'ERROR: Ingrese un número de PARTIDA.'; return; }
+            if (!fechaEntrega) { statusCell.innerHTML = 'ERROR: Ingrese la FECHA DE ENTREGA.'; return; }
+            if (isNaN(cantidad) || cantidad <= 0) { statusCell.innerHTML = 'ERROR: Ingrese una CANTIDAD válida.'; return; }
+            if (!fichaDataString) { statusCell.innerHTML = 'ERROR: No se ha cargado la Ficha Técnica.'; return; }
+
+            statusCell.textContent = 'Guardando...';
+
+            try {
+                const { modelo, config, maquina_asignada } = JSON.parse(fichaDataString);
+                
+                // Preparar la línea de planificación
+                const planLine = {
+                    fecha_entrega: fechaEntrega,
+                    partida: partida,
+                    cantidad_pzas: cantidad,
+                    
+                    // Datos de la ficha
+                    modelo: modelo,
+                    pieza: config.pieza,
+                    talla: config.talla,
+                    codigo_pieza: config.codigo_pieza_completo,
+                    maquina_asignada: maquina_asignada,
+                    tiempo_est_min: config.tiempo_est_min,
+                    peso_est_g: config.peso_est_g,
+                    
+                    // Calculo simple de tiempo total (convierte HH:MM:SS a minutos si es necesario)
+                    tiempo_unitario_min_calc: convertTimeToMinutes(config.tiempo_est_min),
+                    tiempo_total_min: convertTimeToMinutes(config.tiempo_est_min) * cantidad,
+                    
+                    timestamp_registro: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                // Guardar la línea en la colección de planificación (Planificador)
+                // Usamos la PARTIDA como ID del documento (o agregamos al documento de la partida si ya existe)
+                await db.collection(PLANNER_COLLECTION).doc(partida).set({
+                    partida_id: partida,
+                    fecha_entrega_prevista: fechaEntrega,
+                    modelo_principal: modelo,
+                    lineas_planificadas: firebase.firestore.FieldValue.arrayUnion(planLine)
+                }, { merge: true });
+
+                statusCell.className = 'bg-blue-100 font-bold text-blue-700';
+                statusCell.textContent = `✅ Plan Guardado! Partida ${partida} con ${cantidad} pzas.`;
+
+            } catch (error) {
+                console.error("Error al guardar el plan de producción: ", error);
+                statusCell.className = 'status-cell';
+                statusCell.innerHTML = `❌ ERROR al guardar: ${error.message}`;
+            }
+        }
+        
+        function convertTimeToMinutes(timeStr) {
+            if (!timeStr) return 0;
+            // Si es formato decimal (ej: 5.63)
+            if (!isNaN(parseFloat(timeStr))) {
+                return parseFloat(timeStr);
+            }
+            // Si es formato HH:MM:SS (ej: 00:05:38)
+            const parts = timeStr.split(':');
+            if (parts.length === 3) {
+                const hours = parseInt(parts[0]) || 0;
+                const minutes = parseInt(parts[1]) || 0;
+                const seconds = parseInt(parts[2]) || 0;
+                return (hours * 60) + minutes + (seconds / 60);
+            }
+            return 0;
         }
 
         // Inicializar con una fila al cargar
