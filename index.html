@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificador Mensual de Producción</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f4f8; padding: 20px; }
+        .planner-container { max-width: 1400px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        h2 { text-align: center; color: #333; border-bottom: 2px solid #5d9cec; padding-bottom: 10px; }
+        .planner-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .planner-table th, .planner-table td { border: 1px solid #ccc; padding: 10px; text-align: center; font-size: 0.9em; }
+        .planner-table thead th { background-color: #5d9cec; color: white; font-weight: bold; text-transform: uppercase; }
+        .planner-table tbody tr:nth-child(even) { background-color: #f7f7f7; }
+        
+        /* Celdas clave para la encargada */
+        .input-cell input {
+            text-align: center;
+            border: 1px solid #a8a8a8;
+            padding: 5px;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            background-color: #ffe0b2; /* Naranja claro para indicar input */
+            font-weight: bold;
+        }
+
+        /* Contenedor de la Imagen */
+        .model-image-container { width: 80px; height: 80px; margin: 0 auto; border: 1px solid #aaa; background-color: #eee; display: flex; align-items: center; justify-content: center; font-size: 0.7em; color: #555; overflow: hidden; }
+        .model-image-container img { width: 100%; height: 100%; object-fit: contain; }
+        
+        /* Estilos de error / WhatsApp */
+        .status-cell {
+            background-color: #f8d7da; /* Rojo claro */
+            font-weight: bold;
+            color: #721c24;
+        }
+        .whatsapp-btn {
+            background-color: #25D366;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="planner-container">
+        <h2 style="margin-bottom: 20px;">PLANIFICADOR MENSUAL DE PRODUCCIÓN</h2>
+        
+        <div class="flex justify-end mb-4">
+            <button onclick="addRow()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition">
+                ➕ Añadir Línea
+            </button>
+        </div>
+
+        <table class="planner-table">
+            <thead>
+                <tr>
+                    <th rowspan="2">#</th>
+                    <th rowspan="2">Imagen</th>
+                    <th colspan="3">Datos de Entrada (Encargada)</th>
+                    <th colspan="7">Datos de Ficha Técnica (Llenado Automático)</th>
+                </tr>
+                <tr>
+                    <th class="input-cell">FECHA DE ENTREGA (Referencia)</th>
+                    <th class="input-cell">PARTIDA (Generador)</th>
+                    <th class="input-cell">MODELO/MAQUINA</th>
+                    <th>CLIENTE</th>
+                    <th>DESCRIPCIÓN</th>
+                    <th>TALLA</th>
+                    <th>PESO (g)</th>
+                    <th>TIEMPO (min)</th>
+                    <th>ENHEBRADO HILO 1/2</th>
+                    <th>ESTADO / ACCIÓN</th>
+                </tr>
+            </thead>
+            <tbody id="planner-tbody">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN DE FIREBASE (Usa tus credenciales de CIRINEO) ---
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY", // Reemplaza con tu clave
+            authDomain: "TU_AUTH_DOMAIN", // Reemplaza con tu dominio
+            projectId: "cirineo-v3", // Debería ser tu ID de proyecto
+            storageBucket: "TU_STORAGE_BUCKET",
+            messagingSenderId: "TU_MESSAGING_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const FICHA_COLLECTION = "fichas_tecnicas_dev"; // Colección de Desarrollo (Tu Almacén)
+        const PROGRAMMER_WA = '524451229267'; // Tu número de WhatsApp
+
+        let rowCounter = 0;
+
+        // --- FUNCIONES DE LÓGICA DE NEGOCIO ---
+
+        async function searchFicha(rowId) {
+            const maquinaModeloInput = document.getElementById(`input-maquina-modelo-${rowId}`).value.trim().toUpperCase();
+            
+            // Limpiar celdas de resultado y estado
+            clearRowResults(rowId);
+            
+            if (maquinaModeloInput.length === 0) return;
+            
+            // Asumimos el formato [MODELO]/[MAQUINA] o solo [MODELO]
+            let modelo, maquina;
+            const parts = maquinaModeloInput.split('/');
+            modelo = parts[0];
+            maquina = parts.length > 1 ? parts[1] : '';
+
+            if (modelo.length === 0) return;
+            
+            document.getElementById(`status-${rowId}`).textContent = 'Buscando...';
+
+            try {
+                const doc = await db.collection(FICHA_COLLECTION).doc(modelo).get();
+
+                if (!doc.exists) {
+                    showWhatsAppButton(rowId, modelo, maquina, `Modelo "${modelo}" no encontrado en la base de datos de fichas técnicas.`);
+                    return;
+                }
+
+                const fichaData = doc.data();
+                
+                // Si no se especificó máquina, tomamos la primera configuración como referencia
+                let config;
+                let maquinaUsada = maquina;
+                
+                if (maquina.length > 0) {
+                    config = fichaData.configuraciones_maquina[maquina];
+                } else {
+                    // Si no hay máquina, intentamos usar la primera que encontremos
+                    const allConfigs = Object.entries(fichaData.configuraciones_maquina);
+                    if (allConfigs.length > 0) {
+                        maquinaUsada = allConfigs[0][0]; // ID de la máquina
+                        config = allConfigs[0][1]; // El objeto de configuración
+                    }
+                }
+
+                if (!config) {
+                    // El modelo existe, pero no tiene configuración para la máquina específica
+                    if (maquina.length > 0) {
+                        // Si se especificó una máquina (ej: M029/38) y no se encontró
+                        showWhatsAppButton(rowId, modelo, maquina, `Modelo "${modelo}" existe, pero no está configurado para la máquina #${maquina}.`);
+                    } else {
+                        // Si no se especificó máquina, pero el doc está vacío (improbable si existe)
+                         showWhatsAppButton(rowId, modelo, maquina, `Modelo "${modelo}" encontrado, pero sin configuraciones de máquina.`);
+                    }
+                    return;
+                }
+                
+                // Éxito: Rellenar la fila con datos de la configuración
+                populateRow(rowId, fichaData, config, maquinaUsada);
+
+            } catch (error) {
+                console.error("Error al buscar la ficha técnica:", error);
+                document.getElementById(`status-${rowId}`).innerHTML = `ERROR de conexión. Ver consola.`;
+            }
+        }
+        
+        // --- FUNCIONES DE INTERFAZ Y RELLENO ---
+
+        function clearRowResults(rowId) {
+            document.getElementById(`client-${rowId}`).textContent = '';
+            document.getElementById(`desc-${rowId}`).textContent = '';
+            document.getElementById(`talla-${rowId}`).textContent = '';
+            document.getElementById(`peso-${rowId}`).textContent = '';
+            document.getElementById(`tiempo-${rowId}`).textContent = '';
+            document.getElementById(`enhebrado-${rowId}`).textContent = '';
+            document.getElementById(`status-${rowId}`).className = '';
+            document.getElementById(`status-${rowId}`).innerHTML = '';
+            
+            const imgEl = document.getElementById(`img-${rowId}`);
+            imgEl.src = '';
+            imgEl.style.display = 'none';
+            document.getElementById(`img-ph-${rowId}`).style.display = 'flex';
+        }
+
+        function populateRow(rowId, ficha, config, maquina) {
+            document.getElementById(`client-${rowId}`).textContent = ficha.cliente || 'N/A';
+            document.getElementById(`desc-${rowId}`).textContent = ficha.descripcion || 'N/A';
+            document.getElementById(`talla-${rowId}`).textContent = ficha.talla || 'N/A';
+            
+            document.getElementById(`peso-${rowId}`).textContent = `${config.peso_est_g || 0} g`;
+            document.getElementById(`tiempo-${rowId}`).textContent = `${config.tiempo_est_min || 0} min`;
+            
+            const hilos = `${config.enhebrado?.hilo_1_nombre || 'N/A'} / ${config.enhebrado?.hilo_2_nombre || 'N/A'}`;
+            document.getElementById(`enhebrado-${rowId}`).textContent = hilos;
+
+            // Imagen
+            if (ficha.imagen_url) {
+                const imgEl = document.getElementById(`img-${rowId}`);
+                imgEl.src = ficha.imagen_url;
+                imgEl.style.display = 'block';
+                document.getElementById(`img-ph-${rowId}`).style.display = 'none';
+            }
+
+            // Estado
+            document.getElementById(`status-${rowId}`).className = 'bg-green-100 font-bold text-green-700';
+            document.getElementById(`status-${rowId}`).textContent = `✅ Listo para Máq. #${maquina}`;
+        }
+
+        function showWhatsAppButton(rowId, modelo, maquina, mensajeEstandar) {
+            const statusCell = document.getElementById(`status-${rowId}`);
+            statusCell.className = 'status-cell';
+            
+            const maquinaOrigen = Object.keys(statusCell.configuraciones_maquina || {})[0] || ''; // Intenta encontrar una máquina existente
+            const maquinaDestino = maquina || maquinaOrigen; // Si la encargada especificó, la usamos
+
+            // Generar el mensaje de WhatsApp
+            const waMessage = `Te encargo la revisión del modelo *${modelo}*. La máquina solicitada es *#${maquinaDestino}* (si aplica). El sistema indica: ${mensajeEstandar} Por favor, verifica y haz el cambio o crea la configuración.`;
+            
+            const linkWhatsApp = `https://wa.me/${PROGRAMMER_WA}?text=${encodeURIComponent(waMessage)}`;
+
+            statusCell.innerHTML = `
+                <div style="font-size: 0.8em; margin-bottom: 5px;">${mensajeEstandar}</div>
+                <a href="${linkWhatsApp}" target="_blank" class="whatsapp-btn">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style="width: 18px; margin-right: 5px;">
+                    Solicitar al programador el cambio
+                </a>
+            `;
+        }
+
+        function addRow() {
+            rowCounter++;
+            const tbody = document.getElementById('planner-tbody');
+            const newRow = document.createElement('tr');
+            newRow.id = `row-${rowCounter}`;
+            
+            newRow.innerHTML = `
+                <td>${rowCounter}</td>
+                <td>
+                    <div class="model-image-container" id="img-ph-${rowCounter}">
+                        Foto
+                        <img id="img-${rowCounter}" src="" alt="Modelo" style="display: none;">
+                    </div>
+                </td>
+                <td class="input-cell"><input type="date" id="input-fecha-entrega-${rowCounter}"></td>
+                <td class="input-cell"><input type="text" id="input-partida-${rowCounter}"></td>
+                <td class="input-cell">
+                    <input type="text" id="input-maquina-modelo-${rowCounter}" placeholder="MODELO/MAQ" onchange="searchFicha(${rowCounter})">
+                </td>
+                <td id="client-${rowCounter}"></td>
+                <td id="desc-${rowCounter}"></td>
+                <td id="talla-${rowCounter}"></td>
+                <td id="peso-${rowCounter}"></td>
+                <td id="tiempo-${rowCounter}"></td>
+                <td id="enhebrado-${rowCounter}"></td>
+                <td id="status-${rowCounter}"></td>
+            `;
+            tbody.appendChild(newRow);
+        }
+
+        // Inicializar con una fila al cargar
+        document.addEventListener('DOMContentLoaded', addRow);
+
+    </script>
+</body>
+</html>
