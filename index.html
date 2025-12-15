@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Órdenes - Cirineo Tools v6 (Manual)</title>
+    <title>Generador de Órdenes - Cirineo Tools v3</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -26,15 +26,12 @@
     </style>
 </head>
 <body>
-    <div id="root"></div>
+     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
-        const Icon = ({ name, size = 16, className }) => <i data-lucide={name} width={size} height={size} className={className}></i>;
+        const { useState, useEffect, useRef } = React;
 
-        // --- CONFIGURACIÓN DE FIREBASE ---
-        // (¡¡IMPORTANTE!! DEBES REEMPLAZAR ESTOS VALORES CON LOS REALES DE TU ARCHIVO indexx.html)
-                const firebaseConfig = {
+        const firebaseConfig = {
             apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
             authDomain: "cirineo-cec21.firebaseapp.com",
             projectId: "cirineo-cec21",
@@ -44,8 +41,7 @@
             measurementId: "G-B7YLM78RVW"
         };
 
-        const DEFAULT_REPO_URL = "https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/modelos";
-        
+        // Inicializar Firebase (Solo si no ha sido inicializado)
         let db;
         try {
             if (!firebase.apps.length) {
@@ -54,20 +50,20 @@
             db = firebase.firestore();
         } catch (error) {
             console.error("Error al inicializar Firebase:", error);
-            db = null; 
+            db = null;
         }
 
-        // --- COMPONENTE DE FOTO: REPOSITORIO DINÁMICO ---
-        const SmartImage = ({ codigo, repoUrl }) => {
+        // --- COMPONENTE DE FOTO ---
+        const SmartImage = ({ codigo }) => {
+            const REPO_URL = "https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/modelos";
             const [imgSrc, setImgSrc] = useState(null);
             const [error, setError] = useState(false);
 
             useEffect(() => {
-                // Solo intenta cargar si tenemos un código y la URL dinámica
-                if (!codigo || !repoUrl) { setImgSrc(null); return; }
+                if (!codigo) { setImgSrc(null); return; }
                 setError(false);
-                setImgSrc(`${repoUrl}/${codigo.toUpperCase()}.jpg`);
-            }, [codigo, repoUrl]); 
+                setImgSrc(`${REPO_URL}/${codigo}.jpg`);
+            }, [codigo]);
 
             const handleError = () => {
                 if (!error && imgSrc && imgSrc.endsWith('.jpg')) {
@@ -91,10 +87,9 @@
             // --- ESTADOS ---
             const [config, setConfig] = useState({
                 fechaEntrega: new Date().toISOString().split('T')[0],
-                consecutivo: 1, // Siempre inicia en 1, el usuario lo cambia
+                consecutivo: 1, // Ahora es el consecutivo sugerido
                 isLoading: true,
-                loadingMessage: "Cargando configuración global...",
-                repoUrl: null 
+                loadingMessage: "Conectando a la base de datos..."
             });
             
             const [pieces, setPieces] = useState([]);
@@ -103,72 +98,79 @@
             
             useEffect(() => lucide.createIcons(), [pieces, showCopyModal]);
 
-            // --- LÓGICA DE OBTENCIÓN DE CONFIGURACIÓN GLOBAL (repoUrl) ---
-            // Solo busca la URL del repositorio; NO busca consecutivo.
-            const fetchGlobalConfig = useCallback(async () => {
-                let fetchedRepoUrl = DEFAULT_REPO_URL;
-                let message = "Configuración cargada. Consecutivo MANUAL.";
-                
-                // Si la conexión a Firebase falló en la inicialización (db=null)
+            // --- LÓGICA DE DETECCIÓN DE CONSECUTIVO (FIREBASE) ---
+            const determineConsecutive = useCallback(async (dateString) => {
                 if (!db) {
-                    setConfig(c => ({
-                        ...c, 
-                        repoUrl: fetchedRepoUrl, 
-                        isLoading: false, // Finaliza la carga aquí
-                        loadingMessage: "ERROR: Firebase inactivo. Consecutivo y Repo por defecto."
-                    }));
+                    setConfig(c => ({...c, consecutivo: 1, isLoading: false, loadingMessage: "Error: No hay conexión a Firebase."}));
                     return;
                 }
 
+                setConfig(c => ({...c, isLoading: true, loadingMessage: "Buscando último consecutivo..."}));
+
+                const date = new Date(dateString);
+                const userDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000);
+                
+                const month = userDate.getMonth() + 1; // 1-12
+                const year = userDate.getFullYear();
+                
+                // Formato clave (ej: DIC25)
+                const monthNames = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+                const monthYearKey = `${monthNames[userDate.getMonth()]}${year.toString().slice(-2)}`;
+
                 try {
-                    // Consulta a /config/GLOBAL_CONFIG/
-                    const docRef = db.collection('config').doc('GLOBAL_CONFIG');
-                    const doc = await docRef.get();
+                    // Consulta a la colección 'ordenes' de Firebase
+                    const snapshot = await db.collection('ordenes')
+                        .where('partidaBase', '==', monthYearKey) // Usamos un campo para la parte DIC25
+                        .orderBy('consecutivo', 'desc') // Ordenamos por el número (01, 02, 03)
+                        .limit(1)
+                        .get();
 
-                    if (doc.exists && doc.data().repoUrl) {
-                        fetchedRepoUrl = doc.data().repoUrl;
-                        message = "Configuración de imágenes cargada. Consecutivo MANUAL.";
-                    } else {
-                         message = "Repo URL no encontrada en BD. Usando ruta por defecto. Consecutivo MANUAL.";
+                    let nextConsecutive = 1;
+
+                    if (!snapshot.empty) {
+                        const lastOrder = snapshot.docs[0].data();
+                        // El consecutivo debe ser el siguiente al último encontrado
+                        nextConsecutive = (parseInt(lastOrder.consecutivo) || 0) + 1;
+                        if (nextConsecutive > 99) nextConsecutive = 99; // Límite de 99
                     }
-                } catch (error) {
-                    console.error("Error al obtener config. global:", error);
-                    message = "Error de conexión/permisos de config. Usando repo por defecto. Consecutivo MANUAL.";
-                }
 
-                // Finaliza la carga una vez que se tiene la URL del repositorio
-                setConfig(c => ({
-                    ...c, 
-                    repoUrl: fetchedRepoUrl,
-                    isLoading: false, 
-                    loadingMessage: message
-                }));
+                    setConfig(c => ({
+                        ...c, 
+                        consecutivo: nextConsecutive, 
+                        isLoading: false, 
+                        loadingMessage: `Sugerido: ${monthYearKey}_${nextConsecutive.toString().padStart(2, '0')}`
+                    }));
+
+                } catch (error) {
+                    console.error("Error al buscar el consecutivo en Firebase:", error);
+                    setConfig(c => ({...c, consecutivo: 1, isLoading: false, loadingMessage: "Error de consulta. Consecutivo 01."}));
+                }
 
             }, []);
 
-            // Efecto de inicialización: Cargar la configuración global (repoUrl) una vez.
+            // Efecto para correr la detección al cambiar la fecha
             useEffect(() => {
-                fetchGlobalConfig();
-            }, [fetchGlobalConfig]);
+                if (config.fechaEntrega) {
+                    determineConsecutive(config.fechaEntrega);
+                }
+            }, [config.fechaEntrega, determineConsecutive]);
 
             // --- CÁLCULO DE PARTIDA (DIC25_04) ---
             const partidaID = useMemo(() => {
                 if (!config.fechaEntrega || config.isLoading) return "???";
                 const date = new Date(config.fechaEntrega);
-                // Ajuste para zona horaria (evita errores con fechas)
-                const userDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000); 
+                const userDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000);
                 const months = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
                 
                 const mStr = months[userDate.getMonth()];
                 const yStr = userDate.getFullYear().toString().slice(-2);
-                // Usa el valor del estado sin validación de DB
                 const cStr = config.consecutivo.toString().padStart(2, '0');
                 
                 return `${mStr}${yStr}_${cStr}`;
             }, [config.fechaEntrega, config.consecutivo, config.isLoading]);
 
 
-            // --- GESTIÓN DE PIEZAS (Sin cambios) ---
+            // --- GESTIÓN DE PIEZAS (Igual que v2) ---
             const initAddPiece = () => {
                 if (pieces.length === 0) addPiece({});
                 else setShowCopyModal(true);
@@ -213,6 +215,7 @@
             // --- LÓGICA GENERADORA CSV ---
             const generatedRows = useMemo(() => {
                 let rows = [];
+                const basePartida = partidaID.substring(0, 5); // Ej: DIC25
                 if (partidaID === '???') return [];
 
                 pieces.forEach(p => {
@@ -233,19 +236,22 @@
                                 CLIENTE: p.cliente,
                                 MAQUINA: p.maquina,
                                 MODELO: p.modelo,
-                                DESCRIPCION: p.descripcion,
+                                DESCRIPCION: p.descripcion, // Usamos solo la pieza para el CSV
                                 TALLA: p.talla,
                                 PIEZAS: cantidad,
                                 PESO: p.peso,
                                 TIEMPO: p.tiempo,
                                 COSTURA: `${i}_${numPaquetes}`,
-                                FECHA: config.fechaEntrega
+                                FECHA: config.fechaEntrega,
+                                // Estos dos campos son esenciales si implementas la lógica de consecutivo en Firebase
+                                partidaBase: basePartida, 
+                                consecutivo: config.consecutivo 
                             });
                         }
                     }
                 });
                 return rows;
-            }, [pieces, partidaID, config.fechaEntrega, config.isLoading]);
+            }, [pieces, partidaID, config.fechaEntrega, config.consecutivo, config.isLoading]);
 
             // --- EXPORTAR ---
             const downloadCSV = () => {
@@ -284,16 +290,15 @@
                             {/* Panel Configuración */}
                             <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 shadow-sm">
                                 <label className="label-mini text-indigo-900">1. Fecha de Entrega</label>
-                                <input type="date" value={config.fechaEntrega} onChange={e=>setConfig({...config, fechaEntrega:e.target.value})} className="w-full font-bold p-2 rounded border border-indigo-200 mb-4 bg-white text-sm" disabled={config.isLoading}/>
+                                <input type="date" value={config.fechaEntrega} onChange={e=>setConfig({...config, fechaEntrega:e.target.value})} className="w-full font-bold p-2 rounded border border-indigo-200 mb-4 bg-white text-sm"/>
                                 
-                                <label className="label-mini text-indigo-900">2. Consecutivo (Manual)</label>
+                                <label className="label-mini text-indigo-900">2. Consecutivo Sugerido</label>
                                 <div className="flex items-center gap-2">
                                     <button onClick={()=>!config.isLoading && setConfig(c=>({...c, consecutivo:Math.max(1, c.consecutivo-1)}))} className="w-8 h-8 rounded bg-white border flex items-center justify-center hover:bg-slate-50 disabled:opacity-50" disabled={config.isLoading}>-</button>
                                     <input type="number" value={config.consecutivo} onChange={e=>!config.isLoading && setConfig({...config, consecutivo:parseInt(e.target.value)||1})} className="flex-1 text-center font-black text-2xl bg-transparent outline-none disabled:opacity-50" disabled={config.isLoading}/>
                                     <button onClick={()=>!config.isLoading && setConfig(c=>({...c, consecutivo:c.consecutivo+1}))} className="w-8 h-8 rounded bg-white border flex items-center justify-center hover:bg-slate-50 disabled:opacity-50" disabled={config.isLoading}>+</button>
                                 </div>
                                 <p className={`text-[10px] mt-1 text-center font-bold ${config.isLoading ? 'text-orange-500' : 'text-slate-500'}`}>{config.loadingMessage}</p>
-                                {config.repoUrl && <p className="text-[8px] text-center text-slate-400 truncate mt-2">REPO: {config.repoUrl}</p>}
                             </div>
 
                             <div className="text-center">
@@ -318,14 +323,14 @@
                         </div>
                     </div>
 
-                    {/* MAIN AREA - FORMULARIO */}
+                    {/* MAIN AREA - FORMULARIO (Igual que v2) */}
                     <div className="flex-1 flex flex-col bg-slate-100 relative h-full">
                         {/* Header */}
                         <div className="bg-white border-b px-6 py-3 flex justify-between items-center shadow-sm z-10">
                             <h2 className="font-bold text-slate-600 flex items-center gap-2">
                                 <Icon name="layers" size={20}/> Detalle de la Orden
                             </h2>
-                            <button onClick={initAddPiece} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-full font-bold text-xs shadow-md flex items-center gap-2 transition-colors" disabled={config.isLoading}>
+                            <button onClick={initAddPiece} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-full font-bold text-xs shadow-md flex items-center gap-2 transition-colors">
                                 <Icon name="plus"/> AGREGAR PARTE
                             </button>
                         </div>
@@ -348,7 +353,7 @@
                                     <div className="md:w-40 bg-slate-50 border-r p-4 flex flex-col items-center justify-center relative">
                                         <div className="absolute top-2 left-2 text-[10px] font-black text-slate-300">#{idx+1}</div>
                                         <div className="w-full aspect-[3/4] bg-white rounded shadow-sm overflow-hidden border">
-                                            <SmartImage codigo={p.modelo} repoUrl={config.repoUrl} />
+                                            <SmartImage codigo={p.modelo} />
                                         </div>
                                     </div>
 
@@ -454,7 +459,7 @@
 
                     </div>
 
-                    {/* MODAL COPIA INTELIGENTE */}
+                    {/* MODAL COPIA INTELIGENTE (Igual que v2) */}
                     {showCopyModal && (
                         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
@@ -473,15 +478,15 @@
                                         <div><div className="label-mini">MODELO</div><div className="text-xs truncate font-bold">{pieces[pieces.length-1]?.modelo}</div></div>
                                     </div>
                                     <div onClick={()=>setCopySel(s=>({...s, maquina:!s.maquina}))} className={`copy-card p-3 rounded-xl flex items-center gap-3 ${copySel.maquina?'selected':''}`}>
-                                        <div class={`p-2 rounded-full ${copySel.maquina?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="settings" size={18}/></div>
+                                        <div className={`p-2 rounded-full ${copySel.maquina?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="settings" size={18}/></div>
                                         <div><div className="label-mini">MÁQUINA</div><div className="text-xs truncate font-bold">{pieces[pieces.length-1]?.maquina}</div></div>
                                     </div>
                                     <div onClick={()=>setCopySel(s=>({...s, talla:!s.talla}))} className={`copy-card p-3 rounded-xl flex items-center gap-3 ${copySel.talla?'selected':''}`}>
-                                        <div class={`p-2 rounded-full ${copySel.talla?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="ruler" size={18}/></div>
+                                        <div className={`p-2 rounded-full ${copySel.talla?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="ruler" size={18}/></div>
                                         <div><div className="label-mini">TALLA</div><div className="text-xs truncate font-bold">{pieces[pieces.length-1]?.talla}</div></div>
                                     </div>
                                     <div onClick={()=>setCopySel(s=>({...s, paquete:!s.paquete}))} className={`copy-card p-3 rounded-xl flex items-center gap-3 col-span-2 ${copySel.paquete?'selected':''}`}>
-                                        <div class={`p-2 rounded-full ${copySel.paquete?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="package" size={18}/></div>
+                                        <div className={`p-2 rounded-full ${copySel.paquete?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="package" size={18}/></div>
                                         <div><div className="label-mini">CONFIGURACIÓN DE PAQUETE</div><div className="text-xs truncate font-bold">{pieces[pieces.length-1]?.piezasPorPaquete} pzs por paquete</div></div>
                                     </div>
                                 </div>
