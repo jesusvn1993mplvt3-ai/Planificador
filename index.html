@@ -1,202 +1,479 @@
-<!DOCTYPE html><html lang="es">
+<!DOCTYPE html>
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Papeletas - Cirineo v3.4 (FIX PDF)</title><link rel="icon" href="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/icon.ico">
+    <title>Generador de Órdenes - Pre-Proceso</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
-<style>
-    /* =====================
-       FIX DEFINITIVO PDF 6x4
-       ===================== */
-    html, body {
-        background: #ffffff !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    .print-container {
-        background: #ffffff !important;
-    }
-
-    .label-wrapper {
-        width: 6in !important;
-        height: 4in !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #ffffff !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-        page-break-after: always;
-        break-after: page;
-    }
-
-    /* 🔑 evita hoja en blanco final */
-    .label-wrapper:last-child {
-        page-break-after: auto !important;
-        break-after: auto !important;
-    }
-
-    .label-preview-container {
-        width: 6in;
-        height: 4in;
-        background: #ffffff;
-        border: 2px solid #000;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-    }
-
-    .lbl-row { display: flex; width: 100%; border-bottom: 2px solid #000; }
-    .lbl-row:last-child { border-bottom: none; }
-    .lbl-col { border-right: 2px solid #000; padding: 4px 6px; display: flex; flex-direction: column; justify-content: center; }
-    .lbl-col:last-child { border-right: none; }
-
-    .lbl-title { font-size: 11px; font-weight: 700; line-height: 1; }
-    .lbl-big { font-size: 42px; font-weight: 800; line-height: 1; }
-    .lbl-medium { font-size: 24px; font-weight: 700; }
-    .lbl-small { font-size: 14px; font-weight: 700; }
-
-    .row-header{height:18%}
-    .row-info{height:12%}
-    .row-desc{height:10%}
-    .row-metrics{height:22%}
-    .row-details{height:23%}
-    .row-footer{height:15%}
-
-    @page { size: 6in 4in; margin: 0; }
-    @media print {
-        body { margin: 0; }
-        .no-print { display: none !important; }
-    }
-</style>
-
+    <style>
+        body { background-color: #f8fafc; }
+        /* Efectos para el Smart Copy */
+        .copy-section {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            opacity: 0.4;
+            filter: grayscale(1);
+            border: 2px solid #e2e8f0;
+        }
+        .copy-section:hover { opacity: 0.7; }
+        .copy-section.active {
+            opacity: 1;
+            filter: grayscale(0);
+            border-color: #22c55e;
+            background-color: #f0fdf4;
+            transform: scale(1.02);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .preview-table th { position: sticky; top: 0; background: #1e293b; color: white; font-size: 10px; padding: 4px; }
+        .preview-table td { font-size: 11px; padding: 2px 8px; border-bottom: 1px solid #e2e8f0; white-space: nowrap; font-family: monospace; }
+    </style>
 </head>
 <body>
-<div id="root"></div><script type="text/babel">
-const { useEffect, useRef, useState } = React;
+    <div id="root"></div>
 
-const ProductionLabel = ({ data }) => {
-    const svgRef = useRef(null);
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const Icon = ({ name, size = 16, className }) => <i data-lucide={name} width={size} height={size} className={className}></i>;
 
-    useEffect(() => {
-        if (svgRef.current && data.code) {
-            JsBarcode(svgRef.current, data.code, {
-                format: 'CODE128',
-                width: 1.5,
-                height: 40,
-                displayValue: false,
-                margin: 0
+        // --- COMPONENTE DE IMAGEN (Similar a indexx.html) ---
+        const SmartImage = ({ repoUrls, codigo }) => {
+            const [imgSrc, setImgSrc] = useState(null);
+            const [attempt, setAttempt] = useState({ urlIndex: 0, ext: 'jpg' });
+
+            useEffect(() => {
+                if (!repoUrls?.length || !codigo) { setImgSrc(null); return; }
+                setAttempt({ urlIndex: 0, ext: 'jpg' });
+                setImgSrc(`${repoUrls[0]}/${codigo}.jpg`);
+            }, [repoUrls, codigo]);
+
+            const handleError = () => {
+                const { urlIndex, ext } = attempt;
+                if (ext === 'jpg') {
+                    setImgSrc(`${repoUrls[urlIndex]}/${codigo}.png`);
+                    setAttempt({ ...attempt, ext: 'png' });
+                } else if (urlIndex < repoUrls.length - 1) {
+                    const next = urlIndex + 1;
+                    setImgSrc(`${repoUrls[next]}/${codigo}.jpg`);
+                    setAttempt({ urlIndex: next, ext: 'jpg' });
+                } else {
+                    setImgSrc(null); 
+                }
+            };
+
+            if (!imgSrc) return <div className="h-full w-full flex flex-col items-center justify-center bg-slate-100 text-slate-400 text-xs p-4 text-center"><Icon name="image-off" size={24} className="mb-2"/>Sin Imagen</div>;
+            return <img src={imgSrc} onError={handleError} className="h-full w-full object-contain bg-white" />;
+        };
+
+        const App = () => {
+            // Configuración Global
+            const [config, setConfig] = useState({
+                fechaEntrega: new Date().toISOString().split('T')[0],
+                consecutivo: 1,
+                repoUrls: ["https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/modelos"] 
             });
-        }
-    }, [data.code]);
 
-    return (
-        <div className="label-wrapper">
-            <div className="label-preview-container">
-                <div className="lbl-row row-header">
-                    <div className="lbl-col" style={{width:'60%'}}>
-                        <div className="lbl-title">MODELO</div>
-                        <div className="lbl-big">{data.modelo}</div>
+            const [pieces, setPieces] = useState([]);
+            const [showCopyModal, setShowCopyModal] = useState(false);
+            const [copySelection, setCopySelection] = useState({
+                cliente: true,
+                modelo: true,
+                maquina: true,
+                talla: true,
+                materiales: true,
+                paqueteConfig: true
+            });
+
+            useEffect(() => lucide.createIcons(), [pieces, showCopyModal]);
+
+            // --- LÓGICA DE PARTIDA (DIC25_01) ---
+            const partidaID = useMemo(() => {
+                if(!config.fechaEntrega) return "???";
+                const date = new Date(config.fechaEntrega);
+                const months = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+                // Ajuste de zona horaria simple para evitar cambios de día
+                const userDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000);
+                
+                const mStr = months[userDate.getMonth()];
+                const yStr = userDate.getFullYear().toString().slice(-2);
+                const cStr = config.consecutivo.toString().padStart(2, '0');
+                return `${mStr}${yStr}_${cStr}`;
+            }, [config.fechaEntrega, config.consecutivo]);
+
+            // --- MANEJO DE PIEZAS ---
+            const handleAddPiece = () => {
+                if (pieces.length > 0) {
+                    setShowCopyModal(true);
+                } else {
+                    addPiece({});
+                }
+            };
+
+            const confirmAddPiece = () => {
+                const last = pieces[pieces.length - 1];
+                const newPiece = {
+                    id: Date.now(),
+                    cliente: copySelection.cliente ? last.cliente : '',
+                    modelo: copySelection.modelo ? last.modelo : '',
+                    maquina: copySelection.maquina ? last.maquina : '',
+                    talla: copySelection.talla ? last.talla : 'UNITALLA',
+                    nylon: copySelection.materiales ? last.nylon : '',
+                    lycra: copySelection.materiales ? last.lycra : '',
+                    piezasPorPaquete: copySelection.paqueteConfig ? last.piezasPorPaquete : 50,
+                    tiempo: '', 
+                    peso: '',
+                    descripcion: '', // Siempre vacía al inicio
+                    totalPiezas: ''
+                };
+                addPiece(newPiece);
+                setShowCopyModal(false);
+            };
+
+            const addPiece = (data) => {
+                setPieces([...pieces, {
+                    id: data.id || Date.now(),
+                    cliente: data.cliente || '',
+                    modelo: data.modelo || '',
+                    maquina: data.maquina || '',
+                    descripcion: data.descripcion || '',
+                    talla: data.talla || 'UNITALLA',
+                    totalPiezas: data.totalPiezas || '',
+                    piezasPorPaquete: data.piezasPorPaquete || 50,
+                    peso: data.peso || '',
+                    tiempo: data.tiempo || '',
+                    nylon: data.nylon || '',
+                    lycra: data.lycra || ''
+                }]);
+            };
+
+            const updatePiece = (id, field, val) => {
+                setPieces(pieces.map(p => p.id === id ? { ...p, [field]: field === 'modelo' || field === 'cliente' || field === 'descripcion' ? val.toUpperCase() : val } : p));
+            };
+
+            const removePiece = (id) => {
+                if(confirm("¿Borrar esta sección?")) setPieces(pieces.filter(p => p.id !== id));
+            };
+
+            // --- GENERADOR DE FILAS CSV ---
+            const csvRows = useMemo(() => {
+                let rows = [];
+                pieces.forEach(p => {
+                    const total = parseInt(p.totalPiezas) || 0;
+                    const pkgSize = parseInt(p.piezasPorPaquete) || 1;
+                    
+                    if (total > 0 && p.descripcion) {
+                        const numPaquetes = Math.ceil(total / pkgSize);
+                        const prefijo = p.descripcion.substring(0, 2).toUpperCase();
+                        
+                        for (let i = 1; i <= numPaquetes; i++) {
+                            const cantidad = (i === numPaquetes) ? (total - ((numPaquetes - 1) * pkgSize)) : pkgSize;
+                            // Generación del código: PARTIDA + PREFIJO + _SEQ_TOTAL
+                            const codigo = `${partidaID}${prefijo}_${i}_${numPaquetes}`;
+                            
+                            rows.push({
+                                PARTIDA: partidaID,
+                                CODIGO: codigo,
+                                CLIENTE: p.cliente,
+                                MAQUINA: p.maquina,
+                                MODELO: p.modelo,
+                                DESCRIPCION: `${p.modelo}${prefijo}${p.maquina} (${p.descripcion})`, // Formato descriptivo sugerido
+                                PIEZA_BASE: p.descripcion,
+                                COSTURA: `${i}_${numPaquetes}`, // Útil para tener referencia visual
+                                TALLA: p.talla,
+                                PIEZAS: cantidad,
+                                PESO: p.peso,
+                                TIEMPO: p.tiempo,
+                                NYLON: p.nylon,
+                                LYCRA: p.lycra,
+                                FECHA: config.fechaEntrega
+                            });
+                        }
+                    }
+                });
+                return rows;
+            }, [pieces, partidaID, config.fechaEntrega]);
+
+            const downloadCSV = () => {
+                if (csvRows.length === 0) return alert("No hay datos para exportar.");
+                
+                // Headers que espera indexx.html + extras útiles
+                const headers = ["PARTIDA","CODIGO","CLIENTE","MAQUINA","MODELO","DESCRIPCION","TALLA","PIEZAS","PESO","TIEMPO","FECHA_ENTREGA","NYLON","LYCRA","COSTURA"];
+                
+                const csvContent = [
+                    headers.join(","),
+                    ...csvRows.map(r => [
+                        r.PARTIDA, r.CODIGO, r.CLIENTE, r.MAQUINA, r.MODELO, r.PIEZA_BASE, r.TALLA, r.PIEZAS, r.PESO, r.TIEMPO, r.FECHA, r.NYLON, r.LYCRA, r.COSTURA
+                    ].join(","))
+                ].join("\n");
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `${partidaID}_IMPORTAR.csv`);
+                document.body.appendChild(link);
+                link.click();
+            };
+
+            return (
+                <div className="flex h-screen overflow-hidden text-slate-800">
+                    
+                    {/* BARRA LATERAL IZQUIERDA: CONFIG Y PREVIEW */}
+                    <div className="w-80 bg-white border-r flex flex-col z-20 shadow-xl">
+                        <div className="bg-slate-900 text-white p-4">
+                            <h1 className="font-black text-xl flex items-center gap-2"><Icon name="file-spreadsheet"/> GENERADOR</h1>
+                            <p className="text-xs text-slate-400 opacity-80">Herramienta Pre-Cirineo</p>
+                        </div>
+                        
+                        <div className="p-4 flex-1 overflow-y-auto">
+                            {/* Panel Fecha/Partida */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                                <label className="text-[10px] font-bold text-blue-800 uppercase block mb-1">1. Fecha de Entrega</label>
+                                <input type="date" value={config.fechaEntrega} onChange={e=>setConfig({...config, fechaEntrega:e.target.value})} className="w-full text-sm font-bold p-1 border rounded mb-2"/>
+                                
+                                <label className="text-[10px] font-bold text-blue-800 uppercase block mb-1">2. Consecutivo Mes</label>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <button onClick={()=>setConfig(c=>({...c, consecutivo:Math.max(1, c.consecutivo-1)}))} className="bg-white border w-8 h-8 rounded hover:bg-slate-100 flex items-center justify-center font-bold">-</button>
+                                    <input type="number" value={config.consecutivo} onChange={e=>setConfig({...config, consecutivo:parseInt(e.target.value)||1})} className="flex-1 text-center font-black text-lg border rounded h-8"/>
+                                    <button onClick={()=>setConfig(c=>({...c, consecutivo:c.consecutivo+1}))} className="bg-white border w-8 h-8 rounded hover:bg-slate-100 flex items-center justify-center font-bold">+</button>
+                                </div>
+
+                                <div className="text-center mt-3">
+                                    <div className="text-[10px] text-slate-400 uppercase font-bold">Partida Resultante</div>
+                                    <div className="text-2xl font-black text-indigo-600 bg-white border border-indigo-100 rounded py-1">{partidaID}</div>
+                                </div>
+                            </div>
+
+                            {/* Resumen */}
+                            <div className="bg-slate-50 border rounded p-3 mb-4">
+                                <h3 className="text-xs font-bold text-slate-700 border-b pb-1 mb-2">RESUMEN ORDEN</h3>
+                                <div className="text-xs flex justify-between mb-1"><span>Piezas (Partes):</span> <b>{pieces.length}</b></div>
+                                <div className="text-xs flex justify-between mb-1"><span>Total Paquetes:</span> <b>{csvRows.length}</b></div>
+                                <div className="text-xs flex justify-between"><span>Total Prendas:</span> <b>{csvRows.reduce((a,b)=>a+b.PIEZAS,0)}</b></div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t bg-slate-50">
+                            <button onClick={downloadCSV} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded shadow flex items-center justify-center gap-2 transition-transform active:scale-95">
+                                <Icon name="download"/> DESCARGAR CSV
+                            </button>
+                        </div>
                     </div>
-                    <div className="lbl-col" style={{width:'40%'}}>
-                        <div className="lbl-title">TOTAL PIEZAS</div>
-                        <div className="lbl-big">{data.total}</div>
+
+                    {/* ÁREA PRINCIPAL: FORMULARIO */}
+                    <div className="flex-1 flex flex-col bg-slate-100 relative">
+                        {/* Header */}
+                        <div className="bg-white border-b p-3 flex justify-between items-center shadow-sm">
+                            <h2 className="font-bold text-slate-700 flex items-center gap-2"><Icon name="layers"/> Detalle de Piezas</h2>
+                            <button onClick={handleAddPiece} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold text-xs shadow hover:bg-indigo-700 flex items-center gap-2">
+                                <Icon name="plus-circle"/> AÑADIR PIEZA / PARTE
+                            </button>
+                        </div>
+
+                        {/* Lista Scrollable */}
+                        <div className="flex-1 overflow-y-auto p-6 pb-48">
+                            {pieces.length === 0 && (
+                                <div className="text-center opacity-40 mt-20">
+                                    <Icon name="clipboard-list" size={64} className="mx-auto mb-4"/>
+                                    <p className="font-bold text-xl">Orden Vacía</p>
+                                    <p className="text-sm">Agrega la primera parte (ej: FRENTE) para comenzar.</p>
+                                </div>
+                            )}
+
+                            {pieces.map((p, idx) => (
+                                <div key={p.id} className="bg-white rounded-lg shadow-sm border border-slate-200 mb-6 overflow-hidden flex flex-col md:flex-row animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                    {/* Columna Foto */}
+                                    <div className="w-full md:w-40 bg-slate-50 border-r flex items-center justify-center p-2 relative group">
+                                        <div className="aspect-[3/4] w-full max-h-48 bg-white shadow-inner rounded overflow-hidden">
+                                            <SmartImage repoUrls={config.repoUrls} codigo={p.modelo} />
+                                        </div>
+                                        <div className="absolute top-2 left-2 bg-slate-800 text-white text-[10px] font-bold px-2 rounded-full">#{idx + 1}</div>
+                                    </div>
+
+                                    {/* Columna Datos */}
+                                    <div className="flex-1 p-4">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="grid grid-cols-12 gap-3 w-full">
+                                                {/* Fila 1 */}
+                                                <div className="col-span-3">
+                                                    <label className="text-[10px] font-bold text-slate-500 block">MODELO</label>
+                                                    <input value={p.modelo} onChange={e=>updatePiece(p.id,'modelo',e.target.value)} className="w-full border-b-2 border-slate-300 focus:border-indigo-500 font-black text-lg uppercase outline-none" placeholder="M000"/>
+                                                </div>
+                                                <div className="col-span-5">
+                                                    <label className="text-[10px] font-bold text-slate-500 block">CLIENTE</label>
+                                                    <input value={p.cliente} onChange={e=>updatePiece(p.id,'cliente',e.target.value)} className="w-full border-b border-slate-300 focus:border-indigo-500 font-bold uppercase outline-none" placeholder="NOMBRE"/>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 block text-center">MAQUINA</label>
+                                                    <input value={p.maquina} onChange={e=>updatePiece(p.id,'maquina',e.target.value)} className="w-full border-b border-slate-300 focus:border-indigo-500 font-black text-center outline-none" placeholder="#"/>
+                                                </div>
+                                                <div className="col-span-2 text-right">
+                                                    <button onClick={()=>removePiece(p.id)} className="text-red-400 hover:text-red-600 p-1"><Icon name="trash-2" size={18}/></button>
+                                                </div>
+
+                                                {/* Fila 2 - Datos Variables */}
+                                                <div className="col-span-4 bg-green-50 p-2 rounded border border-green-100">
+                                                    <label className="text-[10px] font-bold text-green-700 block">PIEZA (Ej: BLUSA)</label>
+                                                    <input value={p.descripcion} onChange={e=>updatePiece(p.id,'descripcion',e.target.value)} className="w-full bg-transparent border-b border-green-400 font-bold text-lg text-green-800 outline-none uppercase placeholder-green-300" placeholder="NOMBRE PIEZA"/>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 block">TOTAL PZS</label>
+                                                    <input type="number" value={p.totalPiezas} onChange={e=>updatePiece(p.id,'totalPiezas',e.target.value)} className="w-full border-b border-slate-300 font-bold text-indigo-600 outline-none" placeholder="0"/>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 block">PZS/PAQUETE</label>
+                                                    <input type="number" value={p.piezasPorPaquete} onChange={e=>updatePiece(p.id,'piezasPorPaquete',e.target.value)} className="w-full border-b border-slate-300 outline-none" placeholder="50"/>
+                                                </div>
+                                                 <div className="col-span-4 flex items-center justify-end text-[10px] text-slate-400 font-mono">
+                                                     {p.totalPiezas && p.piezasPorPaquete ? (
+                                                         <span>Generará: <b>{Math.ceil(p.totalPiezas/p.piezasPorPaquete)}</b> filas con terminación _1_{Math.ceil(p.totalPiezas/p.piezasPorPaquete)}</span>
+                                                     ) : '-'}
+                                                </div>
+
+                                                {/* Fila 3 - Detalles */}
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 block">TALLA</label>
+                                                    <input value={p.talla} onChange={e=>updatePiece(p.id,'talla',e.target.value)} className="w-full border-b border-slate-200 text-xs outline-none"/>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 block">TIEMPO</label>
+                                                    <input value={p.tiempo} onChange={e=>updatePiece(p.id,'tiempo',e.target.value)} className="w-full border-b border-slate-200 text-xs outline-none" placeholder="min"/>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 block">PESO</label>
+                                                    <input value={p.peso} onChange={e=>updatePiece(p.id,'peso',e.target.value)} className="w-full border-b border-slate-200 text-xs outline-none" placeholder="g"/>
+                                                </div>
+                                                <div className="col-span-3">
+                                                    <label className="text-[10px] font-bold text-slate-500 block">Hilo 1 (Nylon)</label>
+                                                    <input value={p.nylon} onChange={e=>updatePiece(p.id,'nylon',e.target.value)} className="w-full border-b border-slate-200 text-xs outline-none"/>
+                                                </div>
+                                                <div className="col-span-3">
+                                                    <label className="text-[10px] font-bold text-slate-500 block">Hilo 2 (Lycra)</label>
+                                                    <input value={p.lycra} onChange={e=>updatePiece(p.id,'lycra',e.target.value)} className="w-full border-b border-slate-200 text-xs outline-none"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* PANEL VISTA PREVIA INFERIOR */}
+                        <div className="h-48 bg-slate-800 text-slate-300 border-t flex flex-col fixed bottom-0 right-0 left-80 z-10 shadow-inner">
+                            <div className="bg-slate-900 px-4 py-2 flex justify-between items-center border-b border-slate-700">
+                                <span className="text-xs font-bold flex items-center gap-2"><Icon name="eye" size={14}/> VISTA PREVIA CSV</span>
+                                <span className="text-[10px] font-mono opacity-50">{csvRows.length} FILAS GENERADAS</span>
+                            </div>
+                            <div className="flex-1 overflow-auto p-0">
+                                <table className="w-full preview-table text-left border-collapse">
+                                    <thead>
+                                        <tr>
+                                            <th>PARTIDA</th>
+                                            <th>CODIGO</th>
+                                            <th>CLIENTE</th>
+                                            <th>MODELO</th>
+                                            <th>PIEZA</th>
+                                            <th>COSTURA</th>
+                                            <th>CANT</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {csvRows.map((r, i) => (
+                                            <tr key={i} className="hover:bg-slate-700">
+                                                <td className="text-indigo-300 font-bold">{r.PARTIDA}</td>
+                                                <td className="text-green-400 font-mono">{r.CODIGO}</td>
+                                                <td>{r.CLIENTE}</td>
+                                                <td>{r.MODELO}</td>
+                                                <td>{r.PIEZA_BASE}</td>
+                                                <td className="text-center">{r.COSTURA}</td>
+                                                <td className="text-center font-bold text-white">{r.PIEZAS}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* MODAL SMART COPY */}
+                    {showCopyModal && (
+                        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100">
+                                <div className="p-5 border-b bg-slate-50">
+                                    <h3 className="font-bold text-lg text-slate-800">Copia Inteligente</h3>
+                                    <p className="text-xs text-slate-500">¿Qué datos deseas copiar de la pieza anterior ({pieces[pieces.length-1].descripcion})?</p>
+                                </div>
+                                <div className="p-6 grid grid-cols-2 gap-4">
+                                    {/* Botones de Selección */}
+                                    <div onClick={()=>setCopySelection(s=>({...s, cliente: !s.cliente}))} className={`copy-section p-3 rounded flex items-center gap-3 ${copySelection.cliente ? 'active' : ''}`}>
+                                        <Icon name="user" className={copySelection.cliente ? 'text-green-600' : 'text-slate-400'}/>
+                                        <div>
+                                            <div className="font-bold text-xs uppercase">Cliente</div>
+                                            <div className="text-[10px] truncate text-slate-500 max-w-[100px]">{pieces[pieces.length-1].cliente}</div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div onClick={()=>setCopySelection(s=>({...s, modelo: !s.modelo}))} className={`copy-section p-3 rounded flex items-center gap-3 ${copySelection.modelo ? 'active' : ''}`}>
+                                        <Icon name="tag" className={copySelection.modelo ? 'text-green-600' : 'text-slate-400'}/>
+                                        <div>
+                                            <div className="font-bold text-xs uppercase">Modelo</div>
+                                            <div className="text-[10px] truncate text-slate-500">{pieces[pieces.length-1].modelo}</div>
+                                        </div>
+                                    </div>
+
+                                    <div onClick={()=>setCopySelection(s=>({...s, maquina: !s.maquina}))} className={`copy-section p-3 rounded flex items-center gap-3 ${copySelection.maquina ? 'active' : ''}`}>
+                                        <Icon name="settings" className={copySelection.maquina ? 'text-green-600' : 'text-slate-400'}/>
+                                        <div>
+                                            <div className="font-bold text-xs uppercase">Máquina</div>
+                                            <div className="text-[10px] text-slate-500">#{pieces[pieces.length-1].maquina}</div>
+                                        </div>
+                                    </div>
+
+                                    <div onClick={()=>setCopySelection(s=>({...s, materiales: !s.materiales}))} className={`copy-section p-3 rounded flex items-center gap-3 ${copySelection.materiales ? 'active' : ''}`}>
+                                        <Icon name="spool" className={copySelection.materiales ? 'text-green-600' : 'text-slate-400'}/>
+                                        <div>
+                                            <div className="font-bold text-xs uppercase">Hilos</div>
+                                            <div className="text-[10px] text-slate-500">Nylon/Lycra</div>
+                                        </div>
+                                    </div>
+
+                                    <div onClick={()=>setCopySelection(s=>({...s, talla: !s.talla}))} className={`copy-section p-3 rounded flex items-center gap-3 ${copySelection.talla ? 'active' : ''}`}>
+                                        <Icon name="ruler" className={copySelection.talla ? 'text-green-600' : 'text-slate-400'}/>
+                                        <div>
+                                            <div className="font-bold text-xs uppercase">Talla</div>
+                                            <div className="text-[10px] text-slate-500">{pieces[pieces.length-1].talla}</div>
+                                        </div>
+                                    </div>
+
+                                    <div onClick={()=>setCopySelection(s=>({...s, paqueteConfig: !s.paqueteConfig}))} className={`copy-section p-3 rounded flex items-center gap-3 ${copySelection.paqueteConfig ? 'active' : ''}`}>
+                                        <Icon name="package" className={copySelection.paqueteConfig ? 'text-green-600' : 'text-slate-400'}/>
+                                        <div>
+                                            <div className="font-bold text-xs uppercase">Paquete</div>
+                                            <div className="text-[10px] text-slate-500">{pieces[pieces.length-1].piezasPorPaquete} pzs/paq</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="p-4 bg-slate-50 flex justify-end gap-2 border-t">
+                                    <button onClick={()=>setShowCopyModal(false)} className="px-4 py-2 text-slate-500 font-bold text-xs hover:text-slate-700">CANCELAR</button>
+                                    <button onClick={confirmAddPiece} className="px-6 py-2 bg-green-600 text-white font-bold rounded shadow hover:bg-green-700 flex items-center gap-2">
+                                        <Icon name="check-circle" size={16}/> CREAR PIEZA
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
+            );
+        };
 
-                <div className="lbl-row row-info">
-                    <div className="lbl-col" style={{width:'50%'}}>
-                        <div className="lbl-title">CLIENTE</div>
-                        <div className="lbl-medium">{data.cliente}</div>
-                    </div>
-                    <div className="lbl-col" style={{width:'50%'}}>
-                        <div className="lbl-title">PARTIDA</div>
-                        <div className="lbl-medium">{data.partida}</div>
-                    </div>
-                </div>
-
-                <div className="lbl-row row-desc">
-                    <div className="lbl-col" style={{width:'100%'}}>
-                        <div className="lbl-title">DESCRIPCIÓN</div>
-                        <div className="lbl-small">{data.desc}</div>
-                    </div>
-                </div>
-
-                <div className="lbl-row row-metrics">
-                    <div className="lbl-col" style={{width:'33.33%', textAlign:'center'}}>
-                        <div className="lbl-title">PAQUETE</div>
-                        <div className="lbl-big">{data.pack}</div>
-                    </div>
-                    <div className="lbl-col" style={{width:'33.33%', textAlign:'center'}}>
-                        <div className="lbl-title">PIEZAS</div>
-                        <div className="lbl-big">{data.pzs}</div>
-                    </div>
-                    <div className="lbl-col" style={{width:'33.33%', textAlign:'center'}}>
-                        <div className="lbl-title">MÁQUINA</div>
-                        <div className="lbl-big">{data.maq}</div>
-                    </div>
-                </div>
-
-                <div className="lbl-row row-footer" style={{padding:'0 10px', justifyContent:'space-between'}}>
-                    <div>
-                        <div className="lbl-title">ENTREGA</div>
-                        <div className="lbl-small">{data.fecha}</div>
-                    </div>
-                    <div style={{textAlign:'right', flexShrink:0}}>
-                        <svg ref={svgRef} style={{width:'2.5in'}}></svg>
-                        <div className="text-xs font-mono whitespace-nowrap">{data.code}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const App = () => {
-    const labels = Array.from({ length: 6 }).map((_, i) => ({
-        modelo: 'M024',
-        total: 120,
-        cliente: 'CLIENTE',
-        partida: 'A1',
-        desc: 'PIEZA ESTÁNDAR',
-        pack: `${i + 1}/6`,
-        pzs: 20,
-        maq: 3,
-        fecha: '10/12/2025',
-        code: `PKG-${i + 1}`
-    }));
-
-    const downloadPDF = () => {
-        const element = document.getElementById('print');
-        html2pdf().set({
-            margin: 0,
-            filename: 'papeletas_6x4.pdf',
-            image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 2, backgroundColor: '#ffffff' },
-            jsPDF: { unit: 'in', format: [6,4], orientation: 'landscape' },
-            pagebreak: { mode: ['css'] }
-        }).from(element).save();
-    };
-
-    return (
-        <div className="p-4">
-            <button onClick={downloadPDF} className="mb-4 px-4 py-2 bg-red-600 text-white rounded font-bold">DESCARGAR PDF</button>
-            <div id="print" className="print-container">
-                {labels.map((l, i) => <ProductionLabel key={i} data={l} />)}
-            </div>
-        </div>
-    );
-};
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script></body>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
 </html>
