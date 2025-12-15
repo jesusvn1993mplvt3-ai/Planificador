@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Órdenes - Cirineo Tools v5</title>
+    <title>Generador de Órdenes - Cirineo Tools v6 (Manual)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -53,7 +53,6 @@
             db = firebase.firestore();
         } catch (error) {
             console.error("Error al inicializar Firebase:", error);
-            // Si la inicialización falla (ej. config incorrecta), db será null
             db = null; 
         }
 
@@ -91,9 +90,9 @@
             // --- ESTADOS ---
             const [config, setConfig] = useState({
                 fechaEntrega: new Date().toISOString().split('T')[0],
-                consecutivo: 1, 
+                consecutivo: 1, // Siempre inicia en 1, el usuario lo cambia
                 isLoading: true,
-                loadingMessage: "Conectando a la base de datos...",
+                loadingMessage: "Cargando configuración global...",
                 repoUrl: null 
             });
             
@@ -104,11 +103,19 @@
             useEffect(() => lucide.createIcons(), [pieces, showCopyModal]);
 
             // --- LÓGICA DE OBTENCIÓN DE CONFIGURACIÓN GLOBAL (repoUrl) ---
+            // Solo busca la URL del repositorio; NO busca consecutivo.
             const fetchGlobalConfig = useCallback(async () => {
+                let fetchedRepoUrl = DEFAULT_REPO_URL;
+                let message = "Configuración cargada. Consecutivo MANUAL.";
+                
                 // Si la conexión a Firebase falló en la inicialización (db=null)
                 if (!db) {
-                    // Establece el repoUrl por defecto, y permite que determineConsecutive se ejecute
-                    setConfig(c => ({...c, repoUrl: DEFAULT_REPO_URL, loadingMessage: "Advertencia: Firebase inactivo. Usando repo por defecto."}));
+                    setConfig(c => ({
+                        ...c, 
+                        repoUrl: fetchedRepoUrl, 
+                        isLoading: false, // Finaliza la carga aquí
+                        loadingMessage: "ERROR: Firebase inactivo. Consecutivo y Repo por defecto."
+                    }));
                     return;
                 }
 
@@ -117,107 +124,43 @@
                     const docRef = db.collection('config').doc('GLOBAL_CONFIG');
                     const doc = await docRef.get();
 
-                    let fetchedRepoUrl = DEFAULT_REPO_URL;
                     if (doc.exists && doc.data().repoUrl) {
                         fetchedRepoUrl = doc.data().repoUrl;
-                        setConfig(c => ({
-                            ...c,
-                            repoUrl: fetchedRepoUrl,
-                            loadingMessage: "Configuración global cargada. Buscando consecutivo..."
-                        }));
+                        message = "Configuración de imágenes cargada. Consecutivo MANUAL.";
                     } else {
-                         // Documento existe pero no tiene el campo, o el doc. no existe
-                         setConfig(c => ({
-                            ...c, 
-                            repoUrl: DEFAULT_REPO_URL, 
-                            loadingMessage: "Configuración global no encontrada. Usando ruta por defecto."
-                        }));
+                         message = "Repo URL no encontrada en BD. Usando ruta por defecto. Consecutivo MANUAL.";
                     }
                 } catch (error) {
                     console.error("Error al obtener config. global:", error);
-                    // Error de consulta (ej. reglas de seguridad)
-                    setConfig(c => ({
-                        ...c, 
-                        repoUrl: DEFAULT_REPO_URL, 
-                        loadingMessage: "Error de conexión/permisos de config. Usando repo por defecto."
-                    }));
+                    message = "Error de conexión/permisos de config. Usando repo por defecto. Consecutivo MANUAL.";
                 }
+
+                // Finaliza la carga una vez que se tiene la URL del repositorio
+                setConfig(c => ({
+                    ...c, 
+                    repoUrl: fetchedRepoUrl,
+                    isLoading: false, 
+                    loadingMessage: message
+                }));
+
             }, []);
 
-            // --- LÓGICA DE DETECCIÓN DE CONSECUTIVO (FIREBASE) ---
-            const determineConsecutive = useCallback(async (dateString) => {
-                // Solo se ejecuta si repoUrl ya fue establecido (por defecto o desde Firebase)
-                if (!config.repoUrl) { return; } 
-
-                // --- MANEJO DE FALLO CRÍTICO (db=null) ---
-                if (!db) { 
-                    // Si Firebase falló en la inicialización, finaliza la carga aquí con valores por defecto
-                    setConfig(c => ({...c, consecutivo: 1, isLoading: false, loadingMessage: "ERROR CRÍTICO: Firebase inactivo. Consecutivo 01 (MANUAL)."}));
-                    return;
-                }
-                // ------------------------------------------
-
-                setConfig(c => ({...c, isLoading: true, loadingMessage: "Buscando último consecutivo..."}));
-
-                const date = new Date(dateString);
-                const userDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000);
-                
-                const year = userDate.getFullYear();
-                
-                const monthNames = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-                const monthYearKey = `${monthNames[userDate.getMonth()]}${year.toString().slice(-2)}`;
-
-                try {
-                    const snapshot = await db.collection('ordenes')
-                        .where('partidaBase', '==', monthYearKey) 
-                        .orderBy('consecutivo', 'desc') 
-                        .limit(1)
-                        .get();
-
-                    let nextConsecutive = 1;
-
-                    if (!snapshot.empty) {
-                        const lastOrder = snapshot.docs[0].data();
-                        nextConsecutive = (parseInt(lastOrder.consecutivo) || 0) + 1;
-                        if (nextConsecutive > 99) nextConsecutive = 99;
-                    }
-
-                    setConfig(c => ({
-                        ...c, 
-                        consecutivo: nextConsecutive, 
-                        isLoading: false, 
-                        loadingMessage: `Listo. Sugerido: ${monthYearKey}_${nextConsecutive.toString().padStart(2, '0')}`
-                    }));
-
-                } catch (error) {
-                    console.error("Error al buscar el consecutivo en Firebase:", error);
-                    // Error de consulta de consecutivo
-                    setConfig(c => ({...c, consecutivo: 1, isLoading: false, loadingMessage: "Error de consulta. Consecutivo 01 (MANUAL)."}));
-                }
-
-            }, [config.repoUrl]); 
-
-            // Efecto 1: Cargar la configuración global (repoUrl) una vez.
+            // Efecto de inicialización: Cargar la configuración global (repoUrl) una vez.
             useEffect(() => {
                 fetchGlobalConfig();
             }, [fetchGlobalConfig]);
-
-            // Efecto 2: Cargar el consecutivo una vez que el repoUrl esté listo o cuando la fecha cambie.
-            useEffect(() => {
-                if (config.repoUrl) { 
-                    determineConsecutive(config.fechaEntrega);
-                }
-            }, [config.fechaEntrega, config.repoUrl, determineConsecutive]);
 
             // --- CÁLCULO DE PARTIDA (DIC25_04) ---
             const partidaID = useMemo(() => {
                 if (!config.fechaEntrega || config.isLoading) return "???";
                 const date = new Date(config.fechaEntrega);
-                const userDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000);
+                // Ajuste para zona horaria (evita errores con fechas)
+                const userDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000); 
                 const months = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
                 
                 const mStr = months[userDate.getMonth()];
                 const yStr = userDate.getFullYear().toString().slice(-2);
+                // Usa el valor del estado sin validación de DB
                 const cStr = config.consecutivo.toString().padStart(2, '0');
                 
                 return `${mStr}${yStr}_${cStr}`;
@@ -340,9 +283,9 @@
                             {/* Panel Configuración */}
                             <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 shadow-sm">
                                 <label className="label-mini text-indigo-900">1. Fecha de Entrega</label>
-                                <input type="date" value={config.fechaEntrega} onChange={e=>setConfig({...config, fechaEntrega:e.target.value})} className="w-full font-bold p-2 rounded border border-indigo-200 mb-4 bg-white text-sm" disabled={config.isLoading && !config.repoUrl}/>
+                                <input type="date" value={config.fechaEntrega} onChange={e=>setConfig({...config, fechaEntrega:e.target.value})} className="w-full font-bold p-2 rounded border border-indigo-200 mb-4 bg-white text-sm" disabled={config.isLoading}/>
                                 
-                                <label className="label-mini text-indigo-900">2. Consecutivo Sugerido</label>
+                                <label className="label-mini text-indigo-900">2. Consecutivo (Manual)</label>
                                 <div className="flex items-center gap-2">
                                     <button onClick={()=>!config.isLoading && setConfig(c=>({...c, consecutivo:Math.max(1, c.consecutivo-1)}))} className="w-8 h-8 rounded bg-white border flex items-center justify-center hover:bg-slate-50 disabled:opacity-50" disabled={config.isLoading}>-</button>
                                     <input type="number" value={config.consecutivo} onChange={e=>!config.isLoading && setConfig({...config, consecutivo:parseInt(e.target.value)||1})} className="flex-1 text-center font-black text-2xl bg-transparent outline-none disabled:opacity-50" disabled={config.isLoading}/>
