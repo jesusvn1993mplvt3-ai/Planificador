@@ -34,61 +34,30 @@
         const { useState, useEffect, useMemo } = React;
         const Icon = ({ name, size = 16, className }) => <i data-lucide={name} width={size} height={size} className={className}></i>;
 
-        // --- COMPONENTE DE FOTO CON FALLBACK MULTI-REPO ---
+        // --- COMPONENTE DE FOTO (Conectado a tu Repo Principal) ---
         const SmartImage = ({ codigo }) => {
-            
-            // 1. URLs base para los repositorios.
-            // NOTA: Las rutas locales como \\DESKTOP... NO funcionarán en un navegador web.
-            const REPO_URLS = [
-                "https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/Fotos",
-                "https://raw.githubusercontent.com/sweaters-liliana/MAES26/refs/heads/main/IMAGENES"
-            ];
+            // URL Base tomada de tu configuración actual de Cirineo
+            const REPO_URL = "https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/modelos";
             
             const [imgSrc, setImgSrc] = useState(null);
-            // El estado 'urlIndex' rastrea qué URL base de REPO_URLS estamos intentando.
-            const [urlIndex, setUrlIndex] = useState(0); 
-
-            // Función para iniciar el intento de carga de una imagen específica
-            const attemptLoad = (index, code) => {
-                // Si el índice supera el número de URLs disponibles, dejamos de buscar.
-                if (index >= REPO_URLS.length) {
-                    setImgSrc(null); 
-                    setUrlIndex(0); // Resetea el índice para futuros intentos (si cambia el 'codigo')
-                    return;
-                }
-                
-                // Intentamos con la URL base actual + .jpg
-                const currentUrl = REPO_URLS[index];
-                const jpgPath = `${currentUrl}/${code}.jpg`;
-                
-                setUrlIndex(index);
-                setImgSrc(jpgPath); 
-            };
+            const [error, setError] = useState(false);
 
             useEffect(() => {
-                if (!codigo) { 
-                    setImgSrc(null); 
-                    return; 
-                }
-                // Al cambiar el código, siempre empezamos desde la primera URL (índice 0).
-                attemptLoad(0, codigo);
+                if (!codigo) { setImgSrc(null); return; }
+                setError(false);
+                // Intentamos cargar JPG primero
+                setImgSrc(`${REPO_URL}/${codigo}.jpg`);
             }, [codigo]);
 
-            // Función que se llama cuando el navegador falla al cargar 'imgSrc'
             const handleError = () => {
-                // Intentar Fallback
-                
-                // Paso A: Si la URL actual termina en .jpg, intenta con .png
-                if (imgSrc && imgSrc.endsWith('.jpg')) {
-                    const pngPath = imgSrc.replace('.jpg', '.png');
-                    setImgSrc(pngPath); // Esto dispara un nuevo intento de carga
-                    return;
+                if (!error && imgSrc && imgSrc.endsWith('.jpg')) {
+                    // Si falla JPG, intentamos PNG
+                    setImgSrc(imgSrc.replace('.jpg', '.png'));
+                    setError(true); 
+                } else {
+                    // Si falla PNG, mostramos placeholder
+                    setImgSrc(null);
                 }
-                
-                // Paso B: Si ya falló el .png (o la URL ya era .png),
-                // pasa a la siguiente URL base del array.
-                const nextIndex = urlIndex + 1;
-                attemptLoad(nextIndex, codigo);
             };
 
             if (!imgSrc) return (
@@ -99,7 +68,6 @@
             );
             return <img src={imgSrc} onError={handleError} className="h-full w-full object-contain bg-white" />;
         };
-        // --- FIN COMPONENTE DE FOTO ---
 
         const App = () => {
             // --- ESTADOS ---
@@ -463,7 +431,7 @@
                                     <button onClick={confirmCopy} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded shadow-lg text-sm flex items-center gap-2">
                                         <Icon name="check" size={16}/> CREAR COPIA
                                     </button>
-                                }
+                                </div>
                             </div>
                         </div>
                     )}
