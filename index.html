@@ -6,10 +6,14 @@
     <title>Generador de Órdenes - Cirineo Tools</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
         body { background-color: #f1f5f9; }
@@ -21,41 +25,57 @@
         .preview-table td { font-size: 11px; padding: 4px 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace; white-space: nowrap; }
         .preview-table tr:hover td { background-color: #f8fafc; }
         
-        /* Input Styles */
         .input-clean { width: 100%; border-bottom: 2px solid #e2e8f0; outline: none; transition: border-color 0.2s; background: transparent; }
         .input-clean:focus { border-color: #4f46e5; }
         .label-mini { display: block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+
+        /* Loader Animation */
+        .loader { border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
+    <script>
+        // --- CONFIGURACIÓN FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
+            authDomain: "cirineo-cec21.firebaseapp.com",
+            projectId: "cirineo-cec21",
+            storageBucket: "cirineo-cec21.firebasestorage.app",
+            messagingSenderId: "620210618284",
+            appId: "1:620210618284:web:482bab9bf74650fff18409",
+            measurementId: "G-B7YLM78RVW"
+        };
+        
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const COLLECTION_NAME = "planificador_ordenes"; 
+    </script>
+
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
         const Icon = ({ name, size = 16, className }) => <i data-lucide={name} width={size} height={size} className={className}></i>;
 
-        // --- COMPONENTE DE FOTO (Conectado a tu Repo Principal) ---
+        // --- COMPONENTE DE FOTO ---
         const SmartImage = ({ codigo }) => {
-            // URL Base tomada de tu configuración actual de Cirineo
             const REPO_URL = "https://raw.githubusercontent.com/sweaters-liliana/MAES26/refs/heads/main/IMAGENES/";
-            
             const [imgSrc, setImgSrc] = useState(null);
             const [error, setError] = useState(false);
 
             useEffect(() => {
                 if (!codigo) { setImgSrc(null); return; }
                 setError(false);
-                // Intentamos cargar JPG primero
                 setImgSrc(`${REPO_URL}/${codigo}.jpg`);
             }, [codigo]);
 
             const handleError = () => {
                 if (!error && imgSrc && imgSrc.endsWith('.jpg')) {
-                    // Si falla JPG, intentamos PNG
                     setImgSrc(imgSrc.replace('.jpg', '.png'));
                     setError(true); 
                 } else {
-                    // Si falla PNG, mostramos placeholder
                     setImgSrc(null);
                 }
             };
@@ -78,19 +98,21 @@
             
             const [pieces, setPieces] = useState([]);
             const [showCopyModal, setShowCopyModal] = useState(false);
+            const [showHistoryModal, setShowHistoryModal] = useState(false);
+            const [historyList, setHistoryList] = useState([]);
+            const [isSaving, setIsSaving] = useState(false);
+            const [loadingHistory, setLoadingHistory] = useState(false);
             
-            // Selección para Smart Copy
             const [copySel, setCopySel] = useState({
                 cliente: true, modelo: true, maquina: true, talla: true, paquete: true
             });
 
-            useEffect(() => lucide.createIcons(), [pieces, showCopyModal]);
+            useEffect(() => lucide.createIcons(), [pieces, showCopyModal, showHistoryModal]);
 
             // --- CÁLCULO DE PARTIDA (DIC25_04) ---
             const partidaID = useMemo(() => {
                 if (!config.fechaEntrega) return "???";
                 const date = new Date(config.fechaEntrega);
-                // Ajuste zona horaria manual simple
                 const userDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000);
                 
                 const months = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
@@ -100,6 +122,67 @@
                 
                 return `${mStr}${yStr}_${cStr}`;
             }, [config.fechaEntrega, config.consecutivo]);
+
+            // --- FIREBASE LOGIC ---
+            
+            // Guardar orden
+            const saveOrderToFirebase = async () => {
+                if (pieces.length === 0) return;
+                setIsSaving(true);
+                try {
+                    // Usamos partidaID como ID del documento para evitar duplicados reales de ID
+                    await db.collection(COLLECTION_NAME).doc(partidaID).set({
+                        partidaID: partidaID,
+                        fechaCreacion: new Date(),
+                        config: config,
+                        pieces: pieces, // Guardamos el array de piezas
+                        totalPrendas: generatedRows.reduce((a,b)=>a+b.PIEZAS,0),
+                        clientePrincipal: pieces[0]?.cliente || "Varios"
+                    });
+                    console.log("Orden guardada en Firebase");
+                    return true;
+                } catch (error) {
+                    console.error("Error guardando:", error);
+                    alert("Error al guardar en la base de datos: " + error.message);
+                    return false;
+                } finally {
+                    setIsSaving(false);
+                }
+            };
+
+            // Cargar lista de historial
+            const fetchHistory = async () => {
+                setLoadingHistory(true);
+                try {
+                    const snapshot = await db.collection(COLLECTION_NAME)
+                        .orderBy("fechaCreacion", "desc")
+                        .limit(20)
+                        .get();
+                    
+                    const list = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    setHistoryList(list);
+                } catch (error) {
+                    console.error("Error cargando historial:", error);
+                } finally {
+                    setLoadingHistory(false);
+                }
+            };
+
+            // Cargar una orden antigua (CLONAR)
+            const loadOrderFromHistory = (orderData) => {
+                if(confirm(`¿Deseas clonar las piezas de la orden ${orderData.partidaID}? \n\nEsto reemplazará las piezas actuales pero MANTENDRÁ tu consecutivo actual (${partidaID}) para crear una NUEVA orden.`)) {
+                    // Asignamos nuevos IDs a las piezas para evitar conflictos de React keys
+                    const clonedPieces = orderData.pieces.map(p => ({
+                        ...p,
+                        id: Date.now() + Math.random() // Nuevo ID único
+                    }));
+                    setPieces(clonedPieces);
+                    setShowHistoryModal(false);
+                }
+            };
 
             // --- GESTIÓN DE PIEZAS ---
             const initAddPiece = () => {
@@ -116,8 +199,8 @@
                     maquina: copySel.maquina ? last.maquina : '',
                     talla: copySel.talla ? last.talla : 'UNITALLA',
                     piezasPorPaquete: copySel.paquete ? last.piezasPorPaquete : 50,
-                    descripcion: '', // Siempre limpia
-                    totalPiezas: '', // Siempre limpia
+                    descripcion: '', 
+                    totalPiezas: '', 
                     tiempo: '',
                     peso: ''
                 };
@@ -164,7 +247,6 @@
                         
                         for (let i = 1; i <= numPaquetes; i++) {
                             const cantidad = (i === numPaquetes) ? (total - ((numPaquetes - 1) * pkgSize)) : pkgSize;
-                            // CÓDIGO: PARTIDA + PREFIJO + _SEQ_TOTAL
                             const codigo = `${partidaID}${prefijo}_${i}_${numPaquetes}`;
                             
                             rows.push({
@@ -173,9 +255,7 @@
                                 CLIENTE: p.cliente,
                                 MAQUINA: p.maquina,
                                 MODELO: p.modelo,
-                                // Descripción larga para operarios
                                 DESCRIPCION: `${p.modelo} ${p.descripcion} (${i}/${numPaquetes})`, 
-                                // Pieza base para el sistema
                                 PIEZA_BASE: p.descripcion, 
                                 TALLA: p.talla,
                                 PIEZAS: cantidad,
@@ -190,13 +270,16 @@
                 return rows;
             }, [pieces, partidaID, config.fechaEntrega]);
 
-            // --- EXPORTAR ---
-            const downloadCSV = () => {
+            // --- EXPORTAR Y GUARDAR ---
+            const downloadCSV = async () => {
                 if (generatedRows.length === 0) return alert("Nada que exportar.");
                 
-                // Headers compatibles con indexx.html (sin Hilos)
+                // 1. Guardar primero en Firebase
+                const saved = await saveOrderToFirebase();
+                if (!saved) return; // Si falla el guardado, no descarga (o preguntar al usuario)
+
+                // 2. Generar CSV
                 const headers = ["PARTIDA","CODIGO","CLIENTE","MAQUINA","MODELO","DESCRIPCION","TALLA","PIEZAS","PESO","TIEMPO","FECHA_ENTREGA","COSTURA"];
-                
                 const csvContent = [
                     headers.join(","),
                     ...generatedRows.map(r => [
@@ -225,6 +308,7 @@
                         </div>
 
                         <div className="p-5 flex-1 overflow-y-auto space-y-6">
+                            
                             {/* Panel Configuración */}
                             <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 shadow-sm">
                                 <label className="label-mini text-indigo-900">Fecha de Entrega</label>
@@ -241,6 +325,7 @@
                             <div className="text-center">
                                 <div className="label-mini">Partida Generada</div>
                                 <div className="text-3xl font-black text-slate-700 tracking-tight">{partidaID}</div>
+                                {isSaving && <div className="text-xs text-green-600 font-bold mt-1 flex items-center justify-center gap-1"><span className="loader"></span> Guardando...</div>}
                             </div>
 
                             {/* Resumen */}
@@ -249,11 +334,16 @@
                                 <div className="flex justify-between text-xs"><span>Paquetes:</span> <b>{generatedRows.length}</b></div>
                                 <div className="border-t pt-2 flex justify-between text-sm font-bold text-green-700"><span>TOTAL PRENDAS:</span> <span>{generatedRows.reduce((a,b)=>a+b.PIEZAS,0)}</span></div>
                             </div>
+
+                             {/* Botón Historial */}
+                             <button onClick={() => { setShowHistoryModal(true); fetchHistory(); }} className="w-full py-2 px-3 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2">
+                                <Icon name="history" size={14}/> HISTORIAL DE ÓRDENES
+                            </button>
                         </div>
 
                         <div className="p-4 border-t bg-slate-50">
-                            <button onClick={downloadCSV} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95">
-                                <Icon name="download"/> EXPORTAR CSV
+                            <button onClick={downloadCSV} disabled={isSaving} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
+                                {isSaving ? "GUARDANDO..." : <><Icon name="download"/> EXPORTAR Y GUARDAR</>}
                             </button>
                         </div>
                     </div>
@@ -435,6 +525,49 @@
                             </div>
                         </div>
                     )}
+
+                    {/* MODAL HISTORIAL */}
+                    {showHistoryModal && (
+                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200">
+                                <div className="p-5 border-b flex justify-between items-center bg-slate-50 rounded-t-2xl">
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-800">Historial de Órdenes</h3>
+                                        <p className="text-xs text-slate-500">Selecciona una orden antigua para clonar sus piezas.</p>
+                                    </div>
+                                    <button onClick={()=>setShowHistoryModal(false)} className="bg-white p-2 rounded-full hover:bg-slate-200 border"><Icon name="x" size={18}/></button>
+                                </div>
+                                
+                                <div className="flex-1 overflow-y-auto p-4 bg-slate-100 space-y-3">
+                                    {loadingHistory && <div className="text-center py-10"><span className="loader"></span></div>}
+                                    
+                                    {!loadingHistory && historyList.length === 0 && (
+                                        <div className="text-center py-10 text-slate-400 italic">No hay órdenes guardadas aún.</div>
+                                    )}
+
+                                    {historyList.map(order => (
+                                        <div key={order.id} onClick={() => loadOrderFromHistory(order)} className="bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:shadow-md cursor-pointer transition-all group">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="font-black text-indigo-700 text-lg">{order.partidaID}</span>
+                                                <span className="text-xs font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded">
+                                                    {order.fechaCreacion?.seconds ? new Date(order.fechaCreacion.seconds * 1000).toLocaleDateString() : 'Fecha desc.'}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2 text-xs text-slate-600">
+                                                <div><span className="font-bold text-slate-400">Cliente:</span> {order.clientePrincipal}</div>
+                                                <div><span className="font-bold text-slate-400">Piezas:</span> {order.pieces?.length || 0}</div>
+                                                <div><span className="font-bold text-slate-400">Prendas Totales:</span> {order.totalPrendas || 0}</div>
+                                            </div>
+                                            <div className="mt-2 text-[10px] text-indigo-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                                <Icon name="copy" size={10}/> CLONAR PIEZAS A ORDEN ACTUAL
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             );
         };
