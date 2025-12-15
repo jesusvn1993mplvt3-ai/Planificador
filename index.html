@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Órdenes - Cirineo Tools v4</title>
+    <title>Generador de Órdenes - Cirineo Tools v5</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -43,6 +43,8 @@
             appId: "1:123456789012:web:abcdef1234567890",
         };
 
+        const DEFAULT_REPO_URL = "https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/modelos";
+        
         let db;
         try {
             if (!firebase.apps.length) {
@@ -51,7 +53,8 @@
             db = firebase.firestore();
         } catch (error) {
             console.error("Error al inicializar Firebase:", error);
-            db = null;
+            // Si la inicialización falla (ej. config incorrecta), db será null
+            db = null; 
         }
 
         // --- COMPONENTE DE FOTO: REPOSITORIO DINÁMICO ---
@@ -63,9 +66,8 @@
                 // Solo intenta cargar si tenemos un código y la URL dinámica
                 if (!codigo || !repoUrl) { setImgSrc(null); return; }
                 setError(false);
-                // Construye la URL con la ruta de la base de datos
                 setImgSrc(`${repoUrl}/${codigo.toUpperCase()}.jpg`);
-            }, [codigo, repoUrl]); // Depende del código y de la URL dinámica
+            }, [codigo, repoUrl]); 
 
             const handleError = () => {
                 if (!error && imgSrc && imgSrc.endsWith('.jpg')) {
@@ -92,7 +94,7 @@
                 consecutivo: 1, 
                 isLoading: true,
                 loadingMessage: "Conectando a la base de datos...",
-                repoUrl: null // La URL dinámica del repositorio
+                repoUrl: null 
             });
             
             const [pieces, setPieces] = useState([]);
@@ -101,43 +103,59 @@
             
             useEffect(() => lucide.createIcons(), [pieces, showCopyModal]);
 
-            // --- LÓGICA DE OBTENCIÓN DE CONFIGURACIÓN GLOBAL ---
+            // --- LÓGICA DE OBTENCIÓN DE CONFIGURACIÓN GLOBAL (repoUrl) ---
             const fetchGlobalConfig = useCallback(async () => {
+                // Si la conexión a Firebase falló en la inicialización (db=null)
                 if (!db) {
-                    setConfig(c => ({...c, isLoading: false, loadingMessage: "Error: Sin conexión a Firebase. Usando consecutivo y repo local."}));
+                    // Establece el repoUrl por defecto, y permite que determineConsecutive se ejecute
+                    setConfig(c => ({...c, repoUrl: DEFAULT_REPO_URL, loadingMessage: "Advertencia: Firebase inactivo. Usando repo por defecto."}));
                     return;
                 }
 
                 try {
-                    // Busca la URL del repositorio en /config/GLOBAL_CONFIG
+                    // Consulta a /config/GLOBAL_CONFIG/
                     const docRef = db.collection('config').doc('GLOBAL_CONFIG');
                     const doc = await docRef.get();
 
-                    let fetchedRepoUrl = null;
+                    let fetchedRepoUrl = DEFAULT_REPO_URL;
                     if (doc.exists && doc.data().repoUrl) {
                         fetchedRepoUrl = doc.data().repoUrl;
                         setConfig(c => ({
                             ...c,
                             repoUrl: fetchedRepoUrl,
-                            loadingMessage: "Configuración global cargada."
+                            loadingMessage: "Configuración global cargada. Buscando consecutivo..."
                         }));
                     } else {
-                        // Fallback de URL si no existe en BD
-                        fetchedRepoUrl = "https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/modelos";
-                        setConfig(c => ({...c, repoUrl: fetchedRepoUrl, loadingMessage: "Configuración global no encontrada. Usando ruta por defecto."}));
+                         // Documento existe pero no tiene el campo, o el doc. no existe
+                         setConfig(c => ({
+                            ...c, 
+                            repoUrl: DEFAULT_REPO_URL, 
+                            loadingMessage: "Configuración global no encontrada. Usando ruta por defecto."
+                        }));
                     }
                 } catch (error) {
                     console.error("Error al obtener config. global:", error);
-                    // Fallback de URL si hay error de conexión
-                    setConfig(c => ({...c, repoUrl: "https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/modelos", loadingMessage: "Error al obtener la configuración global."}));
+                    // Error de consulta (ej. reglas de seguridad)
+                    setConfig(c => ({
+                        ...c, 
+                        repoUrl: DEFAULT_REPO_URL, 
+                        loadingMessage: "Error de conexión/permisos de config. Usando repo por defecto."
+                    }));
                 }
             }, []);
 
             // --- LÓGICA DE DETECCIÓN DE CONSECUTIVO (FIREBASE) ---
             const determineConsecutive = useCallback(async (dateString) => {
-                if (!db || !config.repoUrl) { // Solo si ya se cargó el repoUrl, o si hay un error crítico
-                    return; 
+                // Solo se ejecuta si repoUrl ya fue establecido (por defecto o desde Firebase)
+                if (!config.repoUrl) { return; } 
+
+                // --- MANEJO DE FALLO CRÍTICO (db=null) ---
+                if (!db) { 
+                    // Si Firebase falló en la inicialización, finaliza la carga aquí con valores por defecto
+                    setConfig(c => ({...c, consecutivo: 1, isLoading: false, loadingMessage: "ERROR CRÍTICO: Firebase inactivo. Consecutivo 01 (MANUAL)."}));
+                    return;
                 }
+                // ------------------------------------------
 
                 setConfig(c => ({...c, isLoading: true, loadingMessage: "Buscando último consecutivo..."}));
 
@@ -173,10 +191,11 @@
 
                 } catch (error) {
                     console.error("Error al buscar el consecutivo en Firebase:", error);
+                    // Error de consulta de consecutivo
                     setConfig(c => ({...c, consecutivo: 1, isLoading: false, loadingMessage: "Error de consulta. Consecutivo 01 (MANUAL)."}));
                 }
 
-            }, [config.repoUrl]); // Depende de que repoUrl ya esté cargado
+            }, [config.repoUrl]); 
 
             // Efecto 1: Cargar la configuración global (repoUrl) una vez.
             useEffect(() => {
@@ -185,7 +204,7 @@
 
             // Efecto 2: Cargar el consecutivo una vez que el repoUrl esté listo o cuando la fecha cambie.
             useEffect(() => {
-                if (config.repoUrl) { // Solo se ejecuta si la URL de config ya está disponible
+                if (config.repoUrl) { 
                     determineConsecutive(config.fechaEntrega);
                 }
             }, [config.fechaEntrega, config.repoUrl, determineConsecutive]);
@@ -330,6 +349,7 @@
                                     <button onClick={()=>!config.isLoading && setConfig(c=>({...c, consecutivo:c.consecutivo+1}))} className="w-8 h-8 rounded bg-white border flex items-center justify-center hover:bg-slate-50 disabled:opacity-50" disabled={config.isLoading}>+</button>
                                 </div>
                                 <p className={`text-[10px] mt-1 text-center font-bold ${config.isLoading ? 'text-orange-500' : 'text-slate-500'}`}>{config.loadingMessage}</p>
+                                {config.repoUrl && <p className="text-[8px] text-center text-slate-400 truncate mt-2">REPO: {config.repoUrl}</p>}
                             </div>
 
                             <div className="text-center">
