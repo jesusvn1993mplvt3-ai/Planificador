@@ -3,577 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Órdenes - Cirineo Tools</title>
+    <title>Consolidador - Cirineo (iPad Legacy)</title>
     
+    <link rel="icon" href="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/icon.ico">
+    
+    <script src="https://unpkg.com/core-js-bundle@3.32.0/index.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.263.0"></script>
 
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <style>
-        body { background-color: #f1f5f9; }
-        .copy-card { transition: all 0.2s; cursor: pointer; border: 2px solid transparent; opacity: 0.6; filter: grayscale(1); background: white; }
-        .copy-card:hover { opacity: 0.9; transform: translateY(-2px); }
-        .copy-card.selected { opacity: 1; border-color: #4f46e5; background-color: #eef2ff; filter: grayscale(0); transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        
-        .preview-table th { background-color: #1e293b; color: white; position: sticky; top: 0; font-size: 10px; padding: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .preview-table td { font-size: 11px; padding: 4px 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace; white-space: nowrap; }
-        .preview-table tr:hover td { background-color: #f8fafc; }
-        
-        .input-clean { width: 100%; border-bottom: 2px solid #e2e8f0; outline: none; transition: border-color 0.2s; background: transparent; }
-        .input-clean:focus { border-color: #4f46e5; }
-        .label-mini { display: block; font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
-
-        /* Loader Animation */
-        .loader { border: 2px solid #f3f3f3; border-top: 2px solid #3498db; border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: inline-block; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { background-color: #f1f5f9; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .card-enter { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Scrollbar compatible */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <script>
-        // --- CONFIGURACIÓN FIREBASE ---
-        const firebaseConfig = {
+    <script type="text/babel">
+        // Compatibilidad de Hooks para React 17
+        var useState = React.useState;
+        var useEffect = React.useEffect;
+        var useMemo = React.useMemo;
+
+        var firebaseConfig = {
             apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
             authDomain: "cirineo-cec21.firebaseapp.com",
             projectId: "cirineo-cec21",
             storageBucket: "cirineo-cec21.firebasestorage.app",
             messagingSenderId: "620210618284",
-            appId: "1:620210618284:web:482bab9bf74650fff18409",
-            measurementId: "G-B7YLM78RVW"
+            appId: "1:620210618284:web:482bab9bf74650fff18409"
         };
-        
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const COLLECTION_NAME = "planificador_ordenes"; 
-    </script>
 
-    <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-        const Icon = ({ name, size = 16, className }) => <i data-lucide={name} width={size} height={size} className={className}></i>;
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        var db = firebase.firestore();
 
-        // --- COMPONENTE DE FOTO ---
-        const SmartImage = ({ codigo }) => {
-            const REPO_URL = "https://raw.githubusercontent.com/sweaters-liliana/MAES26/refs/heads/main/IMAGENES/";
-            const [imgSrc, setImgSrc] = useState(null);
-            const [error, setError] = useState(false);
-
-            useEffect(() => {
-                if (!codigo) { setImgSrc(null); return; }
-                setError(false);
-                setImgSrc(`${REPO_URL}/${codigo}.jpg`);
-            }, [codigo]);
-
-            const handleError = () => {
-                if (!error && imgSrc && imgSrc.endsWith('.jpg')) {
-                    setImgSrc(imgSrc.replace('.jpg', '.png'));
-                    setError(true); 
-                } else {
-                    setImgSrc(null);
+        // Componente Icono con fallback para Lucide antiguo
+        var Icon = function(props) {
+            var containerRef = React.useRef(null);
+            useEffect(function() {
+                if (containerRef.current) {
+                    containerRef.current.innerHTML = '';
+                    var iconName = props.name.replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
+                    var lucideIcon = lucide[props.name] || lucide[iconName];
+                    if (lucideIcon) {
+                        var svg = lucideIcon.toSvg({ 
+                            width: props.size || 18, 
+                            height: props.size || 18, 
+                            class: props.className 
+                        });
+                        containerRef.current.innerHTML = svg;
+                    }
                 }
-            };
+            }, [props.name, props.size, props.className]);
+            return <span ref={containerRef} className="inline-flex items-center justify-center"></span>;
+        };
 
-            if (!imgSrc) return (
-                <div className="h-full w-full flex flex-col items-center justify-center bg-slate-100 text-slate-400">
-                    <Icon name="image" size={24} className="mb-2 opacity-50"/>
-                    <span className="text-[10px] font-bold">SIN FOTO</span>
+        var ScanCard = function(props) {
+            var scan = props.scan;
+            var isArchived = props.isArchived;
+            
+            var containerClasses = isArchived 
+                ? "bg-slate-300 border-l-4 border-slate-400 rounded p-3 mb-3 flex flex-col gap-2 relative text-slate-500 opacity-80" 
+                : "bg-slate-800 border-l-4 border-indigo-500 rounded p-3 mb-3 shadow-lg card-enter flex flex-col gap-2 relative text-white";
+
+            return (
+                <div className={containerClasses}>
+                    {props.processing === scan.id && <div className="absolute inset-0 bg-black/60 z-10 flex items-center justify-center"><div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div></div>}
+                    <div className="flex justify-between items-start">
+                        <div className="bg-indigo-900/50 text-[10px] font-mono px-2 py-0.5 rounded border border-indigo-700/50">{scan.codigo_paquete}</div>
+                        <div className="text-[10px] font-mono text-right flex items-center gap-1">
+                            <Icon name={isArchived ? "archive" : "clock"} size={10}/> {scan.fecha_scan || '---'}
+                        </div>
+                    </div>
+                    <div>
+                        <div className="font-bold text-lg leading-tight">{scan.modelo}</div>
+                        <div className="text-xs font-bold text-yellow-400">{scan.partida}</div>
+                    </div>
+                    {!isArchived && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                            <button onClick={function() { props.onDelete(scan) }} className="bg-slate-700 p-2 rounded flex items-center justify-center gap-1 text-[10px] font-bold">
+                                <Icon name="x" size={14}/> DESCARTAR
+                            </button>
+                            <button onClick={function() { props.onApprove(scan) }} className="bg-green-600 p-2 rounded flex items-center justify-center gap-1 text-[10px] font-bold">
+                                <Icon name="check" size={14}/> APROBAR
+                            </button>
+                        </div>
+                    )}
                 </div>
             );
-            return <img src={imgSrc} onError={handleError} className="h-full w-full object-contain bg-white" />;
         };
 
-        const App = () => {
-            // --- ESTADOS ---
-            const [config, setConfig] = useState({
-                fechaEntrega: new Date().toISOString().split('T')[0],
-                consecutivo: 1
-            });
-            
-            const [pieces, setPieces] = useState([]);
-            const [showCopyModal, setShowCopyModal] = useState(false);
-            const [showHistoryModal, setShowHistoryModal] = useState(false);
-            const [historyList, setHistoryList] = useState([]);
-            const [isSaving, setIsSaving] = useState(false);
-            const [loadingHistory, setLoadingHistory] = useState(false);
-            
-            const [copySel, setCopySel] = useState({
-                cliente: true, modelo: true, maquina: true, talla: true, paquete: true
-            });
+        var MachineColumn = function(props) {
+            return (
+                <div className="min-w-[280px] max-w-[280px] flex flex-col h-full bg-slate-200/50 border border-slate-300 rounded-lg overflow-hidden mr-4">
+                    <div className="p-3 bg-white border-b flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                            <div className="bg-slate-800 w-7 h-7 rounded flex items-center justify-center font-black text-white text-xs">{props.machineId}</div>
+                            <span className="font-bold text-slate-700 text-xs">MÁQUINA</span>
+                        </div>
+                        <span className="text-[10px] font-bold bg-indigo-100 px-2 py-1 rounded-full">{props.pendingScans.length} PEND.</span>
+                    </div>
+                    <div className="p-2 overflow-y-auto flex-1">
+                        {props.pendingScans.map(function(scan) { 
+                            return <ScanCard key={scan.id} scan={scan} onApprove={props.onApprove} onDelete={props.onDelete} processing={props.processingId} isArchived={false} /> 
+                        })}
+                    </div>
+                </div>
+            );
+        };
 
-            useEffect(() => lucide.createIcons(), [pieces, showCopyModal, showHistoryModal]);
+        var App = function() {
+            var [scannedItems, setScannedItems] = useState([]);
+            var [orders, setOrders] = useState([]);
+            var [approvedIds, setApprovedIds] = useState(new Set());
+            var [processingId, setProcessingId] = useState(null);
 
-            // --- CÁLCULO DE PARTIDA (DIC25_04) ---
-            const partidaID = useMemo(() => {
-                if (!config.fechaEntrega) return "???";
-                const date = new Date(config.fechaEntrega);
-                const userDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60000);
-                
-                const months = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-                const mStr = months[userDate.getMonth()];
-                const yStr = userDate.getFullYear().toString().slice(-2);
-                const cStr = config.consecutivo.toString().padStart(2, '0');
-                
-                return `${mStr}${yStr}_${cStr}`;
-            }, [config.fechaEntrega, config.consecutivo]);
-
-            // --- FIREBASE LOGIC ---
-            
-            // Guardar orden
-            const saveOrderToFirebase = async () => {
-                if (pieces.length === 0) return;
-                setIsSaving(true);
-                try {
-                    // Usamos partidaID como ID del documento para evitar duplicados reales de ID
-                    await db.collection(COLLECTION_NAME).doc(partidaID).set({
-                        partidaID: partidaID,
-                        fechaCreacion: new Date(),
-                        config: config,
-                        pieces: pieces, // Guardamos el array de piezas
-                        totalPrendas: generatedRows.reduce((a,b)=>a+b.PIEZAS,0),
-                        clientePrincipal: pieces[0]?.cliente || "Varios"
-                    });
-                    console.log("Orden guardada en Firebase");
-                    return true;
-                } catch (error) {
-                    console.error("Error guardando:", error);
-                    alert("Error al guardar en la base de datos: " + error.message);
-                    return false;
-                } finally {
-                    setIsSaving(false);
-                }
-            };
-
-            // Cargar lista de historial
-            const fetchHistory = async () => {
-                setLoadingHistory(true);
-                try {
-                    const snapshot = await db.collection(COLLECTION_NAME)
-                        .orderBy("fechaCreacion", "desc")
-                        .limit(20)
-                        .get();
-                    
-                    const list = snapshot.docs.map(doc => ({
-                        id: doc.id,
-                        ...doc.data()
-                    }));
-                    setHistoryList(list);
-                } catch (error) {
-                    console.error("Error cargando historial:", error);
-                } finally {
-                    setLoadingHistory(false);
-                }
-            };
-
-            // Cargar una orden antigua (CLONAR)
-            const loadOrderFromHistory = (orderData) => {
-                if(confirm(`¿Deseas clonar las piezas de la orden ${orderData.partidaID}? \n\nEsto reemplazará las piezas actuales pero MANTENDRÁ tu consecutivo actual (${partidaID}) para crear una NUEVA orden.`)) {
-                    // Asignamos nuevos IDs a las piezas para evitar conflictos de React keys
-                    const clonedPieces = orderData.pieces.map(p => ({
-                        ...p,
-                        id: Date.now() + Math.random() // Nuevo ID único
-                    }));
-                    setPieces(clonedPieces);
-                    setShowHistoryModal(false);
-                }
-            };
-
-            // --- GESTIÓN DE PIEZAS ---
-            const initAddPiece = () => {
-                if (pieces.length === 0) addPiece({});
-                else setShowCopyModal(true);
-            };
-
-            const confirmCopy = () => {
-                const last = pieces[pieces.length - 1];
-                const newPiece = {
-                    id: Date.now(),
-                    cliente: copySel.cliente ? last.cliente : '',
-                    modelo: copySel.modelo ? last.modelo : '',
-                    maquina: copySel.maquina ? last.maquina : '',
-                    talla: copySel.talla ? last.talla : 'UNITALLA',
-                    piezasPorPaquete: copySel.paquete ? last.piezasPorPaquete : 50,
-                    descripcion: '', 
-                    totalPiezas: '', 
-                    tiempo: '',
-                    peso: ''
-                };
-                addPiece(newPiece);
-                setShowCopyModal(false);
-            };
-
-            const addPiece = (data) => {
-                setPieces([...pieces, {
-                    id: data.id || Date.now(),
-                    cliente: data.cliente || '',
-                    modelo: data.modelo || '',
-                    maquina: data.maquina || '',
-                    descripcion: data.descripcion || '',
-                    talla: data.talla || 'UNITALLA',
-                    totalPiezas: data.totalPiezas || '',
-                    piezasPorPaquete: data.piezasPorPaquete || 50,
-                    peso: data.peso || '',
-                    tiempo: data.tiempo || ''
-                }]);
-            };
-
-            const updatePiece = (id, field, value) => {
-                setPieces(pieces.map(p => p.id === id ? { 
-                    ...p, 
-                    [field]: ['modelo','cliente','descripcion','talla'].includes(field) ? value.toUpperCase() : value 
-                } : p));
-            };
-
-            const removePiece = (id) => {
-                if(confirm("¿Eliminar esta pieza de la orden?")) setPieces(pieces.filter(p => p.id !== id));
-            };
-
-            // --- LÓGICA GENERADORA CSV ---
-            const generatedRows = useMemo(() => {
-                let rows = [];
-                pieces.forEach(p => {
-                    const total = parseInt(p.totalPiezas) || 0;
-                    const pkgSize = parseInt(p.piezasPorPaquete) || 1;
-                    
-                    if (total > 0 && p.descripcion) {
-                        const numPaquetes = Math.ceil(total / pkgSize);
-                        const prefijo = p.descripcion.substring(0, 2).toUpperCase();
-                        
-                        for (let i = 1; i <= numPaquetes; i++) {
-                            const cantidad = (i === numPaquetes) ? (total - ((numPaquetes - 1) * pkgSize)) : pkgSize;
-                            const codigo = `${partidaID}${prefijo}_${i}_${numPaquetes}`;
-                            
-                            rows.push({
-                                PARTIDA: partidaID,
-                                CODIGO: codigo,
-                                CLIENTE: p.cliente,
-                                MAQUINA: p.maquina,
-                                MODELO: p.modelo,
-                                DESCRIPCION: `${p.modelo} ${p.descripcion} (${i}/${numPaquetes})`, 
-                                PIEZA_BASE: p.descripcion, 
-                                TALLA: p.talla,
-                                PIEZAS: cantidad,
-                                PESO: p.peso,
-                                TIEMPO: p.tiempo,
-                                COSTURA: `${i}_${numPaquetes}`,
-                                FECHA: config.fechaEntrega
-                            });
-                        }
-                    }
+            useEffect(function() {
+                var unsub1 = db.collection('orders').where('status', '!=', 'ARCHIVADO').onSnapshot(function(snap) {
+                    setOrders(snap.docs.map(function(d) { return Object.assign({}, d.data(), {id: d.id}); }));
                 });
-                return rows;
-            }, [pieces, partidaID, config.fechaEntrega]);
+                var unsub2 = db.collection('registro_produccion').onSnapshot(function(snap) {
+                    setScannedItems(snap.docs.map(function(d) { return Object.assign({}, d.data(), {id: d.id}); }));
+                });
+                var unsub3 = db.collection('registros_aprobados').onSnapshot(function(snap) {
+                    var ids = new Set();
+                    snap.docs.forEach(function(d) { ids.add(d.id); });
+                    setApprovedIds(ids);
+                });
+                return function() { unsub1(); unsub2(); unsub3(); };
+            }, []);
 
-            // --- EXPORTAR Y GUARDAR ---
-            const downloadCSV = async () => {
-                if (generatedRows.length === 0) return alert("Nada que exportar.");
-                
-                // 1. Guardar primero en Firebase
-                const saved = await saveOrderToFirebase();
-                if (!saved) return; // Si falla el guardado, no descarga (o preguntar al usuario)
+            var groups = useMemo(function() {
+                var m = {};
+                scannedItems.forEach(function(scan) {
+                    if (approvedIds.has(scan.id)) return;
+                    var order = orders.find(function(o) { return String(o.id) === String(scan.orderId); });
+                    var mq = (order && order.maquina) ? order.maquina : "S/N";
+                    if (!m[mq]) m[mq] = [];
+                    m[mq].push(scan);
+                });
+                return m;
+            }, [scannedItems, orders, approvedIds]);
 
-                // 2. Generar CSV
-                const headers = ["PARTIDA","CODIGO","CLIENTE","MAQUINA","MODELO","DESCRIPCION","TALLA","PIEZAS","PESO","TIEMPO","FECHA_ENTREGA","COSTURA"];
-                const csvContent = [
-                    headers.join(","),
-                    ...generatedRows.map(r => [
-                        r.PARTIDA, r.CODIGO, r.CLIENTE, r.MAQUINA, r.MODELO, r.PIEZA_BASE, r.TALLA, r.PIEZAS, r.PESO, r.TIEMPO, r.FECHA, r.COSTURA
-                    ].join(","))
-                ].join("\n");
+            var handleApprove = async function(scanItem) {
+                setProcessingId(scanItem.id);
+                try {
+                    var orderDocRef = db.collection('orders').doc(String(scanItem.orderId));
+                    var orderSnap = await orderDocRef.get();
+                    if (!orderSnap.exists) throw new Error("No existe la orden");
+                    
+                    var orderData = orderSnap.data();
+                    var updatedProgreso = orderData.progreso.map(function(p) {
+                        if (p.paqueteNum === parseInt(scanItem.paquete_indice)) {
+                            return Object.assign({}, p, { finished: true, fecha: new Date().toISOString() });
+                        }
+                        return p;
+                    });
 
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `${partidaID}_IMPORTAR.csv`;
-                document.body.appendChild(link);
-                link.click();
+                    await orderDocRef.update({ progreso: updatedProgreso });
+                    await db.collection('registros_aprobados').doc(scanItem.id).set(scanItem);
+                } catch (e) { alert(e.message); }
+                setProcessingId(null);
+            };
+
+            var handleDelete = async function(scanItem) {
+                if(!confirm("¿Eliminar?")) return;
+                try { await db.collection('registro_produccion').doc(scanItem.id).delete(); } catch(e) {}
             };
 
             return (
-                <div className="flex h-screen overflow-hidden text-slate-800 font-sans">
-                    
-                    {/* SIDEBAR */}
-                    <div className="w-80 bg-white border-r flex flex-col z-20 shadow-xl">
-                        <div className="bg-slate-800 text-white p-5">
-                            <h1 className="font-black text-xl flex items-center gap-2 italic">
-                                <Icon name="zap" className="text-yellow-400"/> GENERADOR
-                            </h1>
-                            <p className="text-xs text-slate-400 mt-1">Herramienta de Pre-Producción</p>
-                        </div>
-
-                        <div className="p-5 flex-1 overflow-y-auto space-y-6">
-                            
-                            {/* Panel Configuración */}
-                            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 shadow-sm">
-                                <label className="label-mini text-indigo-900">Fecha de Entrega</label>
-                                <input type="date" value={config.fechaEntrega} onChange={e=>setConfig({...config, fechaEntrega:e.target.value})} className="w-full font-bold p-2 rounded border border-indigo-200 mb-4 bg-white text-sm"/>
-                                
-                                <label className="label-mini text-indigo-900">Consecutivo (Mes)</label>
-                                <div className="flex items-center gap-2">
-                                    <button onClick={()=>setConfig(c=>({...c, consecutivo:Math.max(1, c.consecutivo-1)}))} className="w-8 h-8 rounded bg-white border flex items-center justify-center hover:bg-slate-50">-</button>
-                                    <input type="number" value={config.consecutivo} onChange={e=>setConfig({...config, consecutivo:parseInt(e.target.value)||1})} className="flex-1 text-center font-black text-2xl bg-transparent outline-none"/>
-                                    <button onClick={()=>setConfig(c=>({...c, consecutivo:c.consecutivo+1}))} className="w-8 h-8 rounded bg-white border flex items-center justify-center hover:bg-slate-50">+</button>
-                                </div>
-                            </div>
-
-                            <div className="text-center">
-                                <div className="label-mini">Partida Generada</div>
-                                <div className="text-3xl font-black text-slate-700 tracking-tight">{partidaID}</div>
-                                {isSaving && <div className="text-xs text-green-600 font-bold mt-1 flex items-center justify-center gap-1"><span className="loader"></span> Guardando...</div>}
-                            </div>
-
-                            {/* Resumen */}
-                            <div className="bg-slate-50 rounded-xl p-4 border space-y-2">
-                                <div className="flex justify-between text-xs"><span>Partes:</span> <b>{pieces.length}</b></div>
-                                <div className="flex justify-between text-xs"><span>Paquetes:</span> <b>{generatedRows.length}</b></div>
-                                <div className="border-t pt-2 flex justify-between text-sm font-bold text-green-700"><span>TOTAL PRENDAS:</span> <span>{generatedRows.reduce((a,b)=>a+b.PIEZAS,0)}</span></div>
-                            </div>
-
-                             {/* Botón Historial */}
-                             <button onClick={() => { setShowHistoryModal(true); fetchHistory(); }} className="w-full py-2 px-3 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 flex items-center justify-center gap-2">
-                                <Icon name="history" size={14}/> HISTORIAL DE ÓRDENES
-                            </button>
-                        </div>
-
-                        <div className="p-4 border-t bg-slate-50">
-                            <button onClick={downloadCSV} disabled={isSaving} className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-lg shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
-                                {isSaving ? "GUARDANDO..." : <><Icon name="download"/> EXPORTAR Y GUARDAR</>}
-                            </button>
-                        </div>
+                <div className="h-screen flex flex-col bg-slate-100">
+                    <header className="bg-white border-b p-4 flex justify-between items-center">
+                        <h1 className="text-lg font-black text-slate-800">CONSOLIDADOR CIRINEO</h1>
+                        <div className="text-[10px] font-bold bg-slate-800 text-white px-3 py-1 rounded">iOS 10 COMPATIBLE</div>
+                    </header>
+                    <div className="flex-1 overflow-x-auto p-4 flex items-start">
+                        {Object.keys(groups).map(function(mq) {
+                            return <MachineColumn key={mq} machineId={mq} pendingScans={groups[mq]} onApprove={handleApprove} onDelete={handleDelete} processingId={processingId} />
+                        })}
                     </div>
-
-                    {/* MAIN AREA */}
-                    <div className="flex-1 flex flex-col bg-slate-100 relative h-full">
-                        {/* Header */}
-                        <div className="bg-white border-b px-6 py-3 flex justify-between items-center shadow-sm z-10">
-                            <h2 className="font-bold text-slate-600 flex items-center gap-2">
-                                <Icon name="layers" size={20}/> Detalle de la Orden
-                            </h2>
-                            <button onClick={initAddPiece} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 rounded-full font-bold text-xs shadow-md flex items-center gap-2 transition-colors">
-                                <Icon name="plus"/> AGREGAR PARTE
-                            </button>
-                        </div>
-
-                        {/* List */}
-                        <div className="flex-1 overflow-y-auto p-8 pb-48">
-                            {pieces.length === 0 && (
-                                <div className="text-center py-20 opacity-40">
-                                    <div className="bg-slate-200 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <Icon name="file-plus" size={40} className="text-slate-400"/>
-                                    </div>
-                                    <h3 className="font-bold text-lg">Comienza tu orden</h3>
-                                    <p className="text-sm">Agrega la primera pieza (ej. FRENTE) para empezar.</p>
-                                </div>
-                            )}
-
-                            {pieces.map((p, idx) => (
-                                <div key={p.id} className="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 overflow-hidden flex flex-col md:flex-row group animate-in slide-in-from-bottom-2 fade-in duration-300">
-                                    {/* FOTO */}
-                                    <div className="md:w-40 bg-slate-50 border-r p-4 flex flex-col items-center justify-center relative">
-                                        <div className="absolute top-2 left-2 text-[10px] font-black text-slate-300">#{idx+1}</div>
-                                        <div className="w-full aspect-[3/4] bg-white rounded shadow-sm overflow-hidden border">
-                                            <SmartImage codigo={p.modelo} />
-                                        </div>
-                                    </div>
-
-                                    {/* FORMULARIO */}
-                                    <div className="flex-1 p-5">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex-1 grid grid-cols-12 gap-x-6 gap-y-4">
-                                                
-                                                {/* FILA 1: INFO GENERAL */}
-                                                <div className="col-span-3">
-                                                    <label className="label-mini">Modelo</label>
-                                                    <input value={p.modelo} onChange={e=>updatePiece(p.id,'modelo',e.target.value)} className="input-clean font-black text-lg" placeholder="M000"/>
-                                                </div>
-                                                <div className="col-span-6">
-                                                    <label className="label-mini">Cliente</label>
-                                                    <input value={p.cliente} onChange={e=>updatePiece(p.id,'cliente',e.target.value)} className="input-clean font-bold" placeholder="NOMBRE"/>
-                                                </div>
-                                                <div className="col-span-3">
-                                                    <label className="label-mini text-center">Máquina</label>
-                                                    <input value={p.maquina} onChange={e=>updatePiece(p.id,'maquina',e.target.value)} className="input-clean font-black text-center" placeholder="#"/>
-                                                </div>
-
-                                                {/* FILA 2: DATOS DE PRODUCCIÓN */}
-                                                <div className="col-span-4 bg-green-50 p-2 -ml-2 rounded-lg border border-green-100">
-                                                    <label className="label-mini text-green-700">PIEZA / PARTE</label>
-                                                    <input value={p.descripcion} onChange={e=>updatePiece(p.id,'descripcion',e.target.value)} className="w-full bg-transparent border-b-2 border-green-300 font-bold text-xl text-green-800 outline-none placeholder-green-300/50 uppercase" placeholder="Ej: FRENTE"/>
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <label className="label-mini">Total Pzs</label>
-                                                    <input type="number" value={p.totalPiezas} onChange={e=>updatePiece(p.id,'totalPiezas',e.target.value)} className="input-clean font-bold text-indigo-600" placeholder="0"/>
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <label className="label-mini">Pzs/Paq</label>
-                                                    <input type="number" value={p.piezasPorPaquete} onChange={e=>updatePiece(p.id,'piezasPorPaquete',e.target.value)} className="input-clean" placeholder="50"/>
-                                                </div>
-                                                <div className="col-span-4 flex flex-col justify-end text-right">
-                                                    <span className="text-[10px] text-slate-400 font-bold">GENERARÁ:</span>
-                                                    <span className="text-sm font-mono text-slate-600">
-                                                        {p.totalPiezas && p.piezasPorPaquete ? Math.ceil(p.totalPiezas/p.piezasPorPaquete) : 0} paquetes
-                                                    </span>
-                                                </div>
-
-                                                {/* FILA 3: DATOS TÉCNICOS */}
-                                                <div className="col-span-4">
-                                                    <label className="label-mini">Talla</label>
-                                                    <input value={p.talla} onChange={e=>updatePiece(p.id,'talla',e.target.value)} className="input-clean text-sm"/>
-                                                </div>
-                                                <div className="col-span-4">
-                                                    <label className="label-mini">Tiempo (min)</label>
-                                                    <input type="number" value={p.tiempo} onChange={e=>updatePiece(p.id,'tiempo',e.target.value)} className="input-clean text-sm" placeholder="0.00"/>
-                                                </div>
-                                                <div className="col-span-4">
-                                                    <label className="label-mini">Peso (gr)</label>
-                                                    <input type="number" value={p.peso} onChange={e=>updatePiece(p.id,'peso',e.target.value)} className="input-clean text-sm" placeholder="0.00"/>
-                                                </div>
-
-                                            </div>
-                                            
-                                            <button onClick={()=>removePiece(p.id)} className="ml-4 text-slate-300 hover:text-red-500 transition-colors p-2">
-                                                <Icon name="trash-2" size={18}/>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* PREVIEW FOOTER */}
-                        <div className="h-48 bg-slate-800 border-t fixed bottom-0 right-0 left-80 z-30 flex flex-col shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
-                            <div className="bg-slate-900 px-4 py-2 flex justify-between items-center text-slate-400 border-b border-slate-700">
-                                <span className="text-xs font-bold flex items-center gap-2 text-white"><Icon name="eye" size={14}/> VISTA PREVIA DEL ARCHIVO</span>
-                                <span className="text-[10px] font-mono">SE GENERARÁN {generatedRows.length} FILAS</span>
-                            </div>
-                            <div className="flex-1 overflow-auto bg-slate-800">
-                                <table className="w-full preview-table text-left border-collapse text-slate-300">
-                                    <thead>
-                                        <tr>
-                                            <th>PARTIDA</th>
-                                            <th>CODIGO</th>
-                                            <th>CLIENTE</th>
-                                            <th>MODELO</th>
-                                            <th>PIEZA</th>
-                                            <th>COSTURA</th>
-                                            <th>CANT</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {generatedRows.map((r, i) => (
-                                            <tr key={i}>
-                                                <td className="text-indigo-300 font-bold">{r.PARTIDA}</td>
-                                                <td className="text-green-400 font-mono">{r.CODIGO}</td>
-                                                <td>{r.CLIENTE}</td>
-                                                <td>{r.MODELO}</td>
-                                                <td>{r.PIEZA_BASE}</td>
-                                                <td className="text-center">{r.COSTURA}</td>
-                                                <td className="text-center font-bold text-white">{r.PIEZAS}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    {/* MODAL COPIA INTELIGENTE */}
-                    {showCopyModal && (
-                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
-                                <div className="p-6 pb-0">
-                                    <h3 className="text-lg font-black text-slate-800 mb-1">Agregar Nueva Parte</h3>
-                                    <p className="text-sm text-slate-500">Selecciona qué datos copiar de la pieza anterior:</p>
-                                </div>
-                                
-                                <div className="p-6 grid grid-cols-2 gap-3">
-                                    <div onClick={()=>setCopySel(s=>({...s, cliente:!s.cliente}))} className={`copy-card p-3 rounded-xl flex items-center gap-3 ${copySel.cliente?'selected':''}`}>
-                                        <div className={`p-2 rounded-full ${copySel.cliente?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="user" size={18}/></div>
-                                        <div><div className="label-mini">CLIENTE</div><div className="text-xs truncate max-w-[120px] font-bold">{pieces[pieces.length-1]?.cliente}</div></div>
-                                    </div>
-                                    <div onClick={()=>setCopySel(s=>({...s, modelo:!s.modelo}))} className={`copy-card p-3 rounded-xl flex items-center gap-3 ${copySel.modelo?'selected':''}`}>
-                                        <div className={`p-2 rounded-full ${copySel.modelo?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="tag" size={18}/></div>
-                                        <div><div className="label-mini">MODELO</div><div className="text-xs truncate font-bold">{pieces[pieces.length-1]?.modelo}</div></div>
-                                    </div>
-                                    <div onClick={()=>setCopySel(s=>({...s, maquina:!s.maquina}))} className={`copy-card p-3 rounded-xl flex items-center gap-3 ${copySel.maquina?'selected':''}`}>
-                                        <div className={`p-2 rounded-full ${copySel.maquina?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="settings" size={18}/></div>
-                                        <div><div className="label-mini">MÁQUINA</div><div className="text-xs truncate font-bold">{pieces[pieces.length-1]?.maquina}</div></div>
-                                    </div>
-                                    <div onClick={()=>setCopySel(s=>({...s, talla:!s.talla}))} className={`copy-card p-3 rounded-xl flex items-center gap-3 ${copySel.talla?'selected':''}`}>
-                                        <div className={`p-2 rounded-full ${copySel.talla?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="ruler" size={18}/></div>
-                                        <div><div className="label-mini">TALLA</div><div className="text-xs truncate font-bold">{pieces[pieces.length-1]?.talla}</div></div>
-                                    </div>
-                                    <div onClick={()=>setCopySel(s=>({...s, paquete:!s.paquete}))} className={`copy-card p-3 rounded-xl flex items-center gap-3 col-span-2 ${copySel.paquete?'selected':''}`}>
-                                        <div className={`p-2 rounded-full ${copySel.paquete?'bg-indigo-100 text-indigo-600':'bg-slate-100 text-slate-400'}`}><Icon name="package" size={18}/></div>
-                                        <div><div className="label-mini">CONFIGURACIÓN DE PAQUETE</div><div className="text-xs truncate font-bold">{pieces[pieces.length-1]?.piezasPorPaquete} pzs por paquete</div></div>
-                                    </div>
-                                </div>
-
-                                <div className="p-4 bg-slate-50 border-t flex justify-end gap-3">
-                                    <button onClick={()=>setShowCopyModal(false)} className="px-4 py-2 text-slate-500 font-bold text-xs hover:bg-slate-100 rounded">CANCELAR</button>
-                                    <button onClick={confirmCopy} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded shadow-lg text-sm flex items-center gap-2">
-                                        <Icon name="check" size={16}/> CREAR COPIA
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MODAL HISTORIAL */}
-                    {showHistoryModal && (
-                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200">
-                                <div className="p-5 border-b flex justify-between items-center bg-slate-50 rounded-t-2xl">
-                                    <div>
-                                        <h3 className="text-lg font-black text-slate-800">Historial de Órdenes</h3>
-                                        <p className="text-xs text-slate-500">Selecciona una orden antigua para clonar sus piezas.</p>
-                                    </div>
-                                    <button onClick={()=>setShowHistoryModal(false)} className="bg-white p-2 rounded-full hover:bg-slate-200 border"><Icon name="x" size={18}/></button>
-                                </div>
-                                
-                                <div className="flex-1 overflow-y-auto p-4 bg-slate-100 space-y-3">
-                                    {loadingHistory && <div className="text-center py-10"><span className="loader"></span></div>}
-                                    
-                                    {!loadingHistory && historyList.length === 0 && (
-                                        <div className="text-center py-10 text-slate-400 italic">No hay órdenes guardadas aún.</div>
-                                    )}
-
-                                    {historyList.map(order => (
-                                        <div key={order.id} onClick={() => loadOrderFromHistory(order)} className="bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:shadow-md cursor-pointer transition-all group">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="font-black text-indigo-700 text-lg">{order.partidaID}</span>
-                                                <span className="text-xs font-mono text-slate-400 bg-slate-50 px-2 py-1 rounded">
-                                                    {order.fechaCreacion?.seconds ? new Date(order.fechaCreacion.seconds * 1000).toLocaleDateString() : 'Fecha desc.'}
-                                                </span>
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-2 text-xs text-slate-600">
-                                                <div><span className="font-bold text-slate-400">Cliente:</span> {order.clientePrincipal}</div>
-                                                <div><span className="font-bold text-slate-400">Piezas:</span> {order.pieces?.length || 0}</div>
-                                                <div><span className="font-bold text-slate-400">Prendas Totales:</span> {order.totalPrendas || 0}</div>
-                                            </div>
-                                            <div className="mt-2 text-[10px] text-indigo-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                                                <Icon name="copy" size={10}/> CLONAR PIEZAS A ORDEN ACTUAL
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                 </div>
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        ReactDOM.render(<App />, document.getElementById('root'));
     </script>
 </body>
 </html>
