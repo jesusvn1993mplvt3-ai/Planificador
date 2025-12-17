@@ -3,201 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consolidador - Cirineo (iPad Legacy)</title>
-    
-    <link rel="icon" href="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/icon.ico">
-    
-    <script src="https://unpkg.com/core-js-bundle@3.32.0/index.min.js"></script>
+    <title>Generador de CSV - Órdenes de Compra</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@0.263.0"></script>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-    <style>
-        body { background-color: #f1f5f9; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        .card-enter { animation: slideIn 0.3s ease-out forwards; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        /* Scrollbar compatible */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #e2e8f0; }
-        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
-    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
-<body>
-    <div id="root"></div>
+<body class="bg-gray-100 p-8 font-sans">
 
-    <script type="text/babel">
-        // Compatibilidad de Hooks para React 17
-        var useState = React.useState;
-        var useEffect = React.useEffect;
-        var useMemo = React.useMemo;
+    <div id="app" class="max-w-5xl mx-auto bg-white shadow-xl rounded-lg overflow-hidden">
+        
+        <div class="bg-blue-800 p-6 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold"><i class="fas fa-file-csv mr-2"></i> Generador de Órdenes (CSV)</h1>
+                <p class="text-blue-200 text-sm mt-1">Calcula paquetes y genera códigos automáticamente</p>
+            </div>
+        </div>
 
-        var firebaseConfig = {
-            apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
-            authDomain: "cirineo-cec21.firebaseapp.com",
-            projectId: "cirineo-cec21",
-            storageBucket: "cirineo-cec21.firebasestorage.app",
-            messagingSenderId: "620210618284",
-            appId: "1:620210618284:web:482bab9bf74650fff18409"
-        };
-
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        var db = firebase.firestore();
-
-        // Componente Icono con fallback para Lucide antiguo
-        var Icon = function(props) {
-            var containerRef = React.useRef(null);
-            useEffect(function() {
-                if (containerRef.current) {
-                    containerRef.current.innerHTML = '';
-                    var iconName = props.name.replace(/-([a-z])/g, function (g) { return g[1].toUpperCase(); });
-                    var lucideIcon = lucide[props.name] || lucide[iconName];
-                    if (lucideIcon) {
-                        var svg = lucideIcon.toSvg({ 
-                            width: props.size || 18, 
-                            height: props.size || 18, 
-                            class: props.className 
-                        });
-                        containerRef.current.innerHTML = svg;
-                    }
-                }
-            }, [props.name, props.size, props.className]);
-            return <span ref={containerRef} className="inline-flex items-center justify-center"></span>;
-        };
-
-        var ScanCard = function(props) {
-            var scan = props.scan;
-            var isArchived = props.isArchived;
+        <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            var containerClasses = isArchived 
-                ? "bg-slate-300 border-l-4 border-slate-400 rounded p-3 mb-3 flex flex-col gap-2 relative text-slate-500 opacity-80" 
-                : "bg-slate-800 border-l-4 border-indigo-500 rounded p-3 mb-3 shadow-lg card-enter flex flex-col gap-2 relative text-white";
-
-            return (
-                <div className={containerClasses}>
-                    {props.processing === scan.id && <div className="absolute inset-0 bg-black/60 z-10 flex items-center justify-center"><div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div></div>}
-                    <div className="flex justify-between items-start">
-                        <div className="bg-indigo-900/50 text-[10px] font-mono px-2 py-0.5 rounded border border-indigo-700/50">{scan.codigo_paquete}</div>
-                        <div className="text-[10px] font-mono text-right flex items-center gap-1">
-                            <Icon name={isArchived ? "archive" : "clock"} size={10}/> {scan.fecha_scan || '---'}
-                        </div>
+            <div class="space-y-4">
+                <h2 class="text-xl font-semibold text-gray-700 border-b pb-2">1. Datos Generales</h2>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700">Modelo</label>
+                        <input v-model="form.modelo" type="text" class="w-full p-2 border rounded" placeholder="Ej. M029">
                     </div>
                     <div>
-                        <div className="font-bold text-lg leading-tight">{scan.modelo}</div>
-                        <div className="text-xs font-bold text-yellow-400">{scan.partida}</div>
-                    </div>
-                    {!isArchived && (
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                            <button onClick={function() { props.onDelete(scan) }} className="bg-slate-700 p-2 rounded flex items-center justify-center gap-1 text-[10px] font-bold">
-                                <Icon name="x" size={14}/> DESCARTAR
-                            </button>
-                            <button onClick={function() { props.onApprove(scan) }} className="bg-green-600 p-2 rounded flex items-center justify-center gap-1 text-[10px] font-bold">
-                                <Icon name="check" size={14}/> APROBAR
-                            </button>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        var MachineColumn = function(props) {
-            return (
-                <div className="min-w-[280px] max-w-[280px] flex flex-col h-full bg-slate-200/50 border border-slate-300 rounded-lg overflow-hidden mr-4">
-                    <div className="p-3 bg-white border-b flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <div className="bg-slate-800 w-7 h-7 rounded flex items-center justify-center font-black text-white text-xs">{props.machineId}</div>
-                            <span className="font-bold text-slate-700 text-xs">MÁQUINA</span>
-                        </div>
-                        <span className="text-[10px] font-bold bg-indigo-100 px-2 py-1 rounded-full">{props.pendingScans.length} PEND.</span>
-                    </div>
-                    <div className="p-2 overflow-y-auto flex-1">
-                        {props.pendingScans.map(function(scan) { 
-                            return <ScanCard key={scan.id} scan={scan} onApprove={props.onApprove} onDelete={props.onDelete} processing={props.processingId} isArchived={false} /> 
-                        })}
+                        <label class="block text-sm font-bold text-gray-700">Cliente</label>
+                        <input v-model="form.cliente" type="text" class="w-full p-2 border rounded" placeholder="Ej. MAES">
                     </div>
                 </div>
-            );
-        };
 
-        var App = function() {
-            var [scannedItems, setScannedItems] = useState([]);
-            var [orders, setOrders] = useState([]);
-            var [approvedIds, setApprovedIds] = useState(new Set());
-            var [processingId, setProcessingId] = useState(null);
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700">Fecha de Entrega</label>
+                        <input v-model="form.fecha" type="date" class="w-full p-2 border rounded" @change="calcularPartida">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700">Código Partida (Auto)</label>
+                        <input v-model="form.partidaCodigo" type="text" class="w-full p-2 border bg-gray-100 rounded" placeholder="Ej. DIC25_01">
+                    </div>
+                </div>
 
-            useEffect(function() {
-                var unsub1 = db.collection('orders').where('status', '!=', 'ARCHIVADO').onSnapshot(function(snap) {
-                    setOrders(snap.docs.map(function(d) { return Object.assign({}, d.data(), {id: d.id}); }));
-                });
-                var unsub2 = db.collection('registro_produccion').onSnapshot(function(snap) {
-                    setScannedItems(snap.docs.map(function(d) { return Object.assign({}, d.data(), {id: d.id}); }));
-                });
-                var unsub3 = db.collection('registros_aprobados').onSnapshot(function(snap) {
-                    var ids = new Set();
-                    snap.docs.forEach(function(d) { ids.add(d.id); });
-                    setApprovedIds(ids);
-                });
-                return function() { unsub1(); unsub2(); unsub3(); };
-            }, []);
+                <div>
+                    <label class="block text-sm font-bold text-gray-700">Cantidad TOTAL de Prendas</label>
+                    <input v-model.number="form.totalPrendas" type="number" class="w-full p-2 border rounded bg-yellow-50" placeholder="Ej. 250">
+                    <p class="text-xs text-gray-500 mt-1">Esto define cuántas prendas armadas necesitas al final.</p>
+                </div>
+            </div>
 
-            var groups = useMemo(function() {
-                var m = {};
-                scannedItems.forEach(function(scan) {
-                    if (approvedIds.has(scan.id)) return;
-                    var order = orders.find(function(o) { return String(o.id) === String(scan.orderId); });
-                    var mq = (order && order.maquina) ? order.maquina : "S/N";
-                    if (!m[mq]) m[mq] = [];
-                    m[mq].push(scan);
-                });
-                return m;
-            }, [scannedItems, orders, approvedIds]);
+            <div class="space-y-4">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h2 class="text-xl font-semibold text-gray-700">2. Partes de la Prenda</h2>
+                    <button @click="agregarComponente" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">
+                        <i class="fas fa-plus"></i> Agregar Parte
+                    </button>
+                </div>
 
-            var handleApprove = async function(scanItem) {
-                setProcessingId(scanItem.id);
-                try {
-                    var orderDocRef = db.collection('orders').doc(String(scanItem.orderId));
-                    var orderSnap = await orderDocRef.get();
-                    if (!orderSnap.exists) throw new Error("No existe la orden");
+                <div class="bg-gray-50 p-4 rounded-lg border h-64 overflow-y-auto space-y-4">
+                    <div v-for="(comp, index) in componentes" :key="index" class="bg-white p-3 rounded shadow-sm border relative">
+                        <button @click="eliminarComponente(index)" class="absolute top-2 right-2 text-red-400 hover:text-red-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">Descripción</label>
+                                <input v-model="comp.descripcion" placeholder="Ej. Blusa doble" class="w-full p-1 border rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">Sufijo Cód.</label>
+                                <input v-model="comp.sufijo" placeholder="Ej. BL" class="w-full p-1 border rounded text-sm uppercase">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">Máquina</label>
+                                <input v-model="comp.maquina" type="number" class="w-full p-1 border rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">Multiplicador</label>
+                                <input v-model.number="comp.multiplicador" type="number" class="w-full p-1 border rounded text-sm bg-blue-50" title="¿Cuántas piezas de estas lleva 1 prenda?">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">Pzs x Paquete</label>
+                                <input v-model.number="comp.piezasPorPaquete" type="number" class="w-full p-1 border rounded text-sm bg-blue-50">
+                            </div>
+                        </div>
+                        
+                        <div class="mt-2 text-xs text-blue-600 font-mono bg-blue-50 p-1 rounded">
+                            Total Piezas: {{ form.totalPrendas * comp.multiplicador }} | 
+                            Paquetes: {{ Math.ceil((form.totalPrendas * comp.multiplicador) / comp.piezasPorPaquete) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 text-white p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">Vista Previa de Datos (Primeros 5 registros)</h2>
+                <div class="space-x-4">
+                    <span class="text-sm text-gray-400">Archivos a generar: {{ componentes.length }}</span>
+                    <button @click="generarCSV" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded font-bold shadow-lg transform hover:scale-105 transition">
+                        <i class="fas fa-download mr-2"></i> Descargar CSVs
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto bg-gray-900 rounded p-4 font-mono text-xs text-gray-300">
+                <table class="w-full text-left">
+                    <thead class="text-gray-500 border-b border-gray-700">
+                        <tr>
+                            <th class="p-1">MODELO</th>
+                            <th class="p-1">TOTAL P.</th>
+                            <th class="p-1">PARTIDA</th>
+                            <th class="p-1">CLIENTE</th>
+                            <th class="p-1">DESCRIPCION</th>
+                            <th class="p-1">COSTURA</th>
+                            <th class="p-1">PIEZAS</th>
+                            <th class="p-1">CODIGO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(row, i) in previewRows" :key="i" class="border-b border-gray-800 hover:bg-gray-800">
+                            <td class="p-1">{{ row.modelo }}</td>
+                            <td class="p-1">{{ row.totalPiezas }}</td>
+                            <td class="p-1">{{ row.partida }}</td>
+                            <td class="p-1">{{ row.cliente }}</td>
+                            <td class="p-1">{{ row.descripcion }}</td>
+                            <td class="p-1 text-yellow-400">{{ row.costura }}</td>
+                            <td class="p-1">{{ row.piezas }}</td>
+                            <td class="p-1 text-green-400">{{ row.codigo }}</td>
+                        </tr>
+                        <tr v-if="previewRows.length === 0">
+                            <td colspan="8" class="p-4 text-center text-gray-500">Completa los datos para ver la previsualización...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    form: {
+                        modelo: 'M029',
+                        cliente: 'MAES',
+                        fecha: '',
+                        partidaCodigo: '',
+                        totalPrendas: 250 // Base para cálculo
+                    },
+                    componentes: [
+                        { descripcion: 'M029BL30 (blusa doble)', sufijo: 'BL', maquina: 30, multiplicador: 1, piezasPorPaquete: 25 },
+                        { descripcion: 'M029ML01 (manga larga)', sufijo: 'ML', maquina: 1, multiplicador: 2, piezasPorPaquete: 50 }
+                    ]
+                }
+            },
+            computed: {
+                previewRows() {
+                    // Generamos solo unos pocos para mostrar en pantalla
+                    let rows = [];
+                    if(!this.form.fecha || !this.form.totalPrendas) return [];
                     
-                    var orderData = orderSnap.data();
-                    var updatedProgreso = orderData.progreso.map(function(p) {
-                        if (p.paqueteNum === parseInt(scanItem.paquete_indice)) {
-                            return Object.assign({}, p, { finished: true, fecha: new Date().toISOString() });
+                    // Tomamos solo el primer componente para la preview
+                    const comp = this.componentes[0];
+                    if(!comp) return [];
+
+                    const totalPiezasComp = this.form.totalPrendas * comp.multiplicador;
+                    const numPaquetes = Math.ceil(totalPiezasComp / comp.piezasPorPaquete);
+
+                    for (let i = 1; i <= Math.min(5, numPaquetes); i++) {
+                        rows.push({
+                            modelo: this.form.modelo,
+                            totalPiezas: totalPiezasComp,
+                            partida: this.form.partidaCodigo,
+                            cliente: this.form.cliente,
+                            descripcion: comp.descripcion,
+                            costura: `${i}_${numPaquetes}`, // El famoso 1_10
+                            piezas: comp.piezasPorPaquete,
+                            codigo: `${this.form.partidaCodigo}${comp.sufijo}_${i}_${numPaquetes}`
+                        });
+                    }
+                    return rows;
+                }
+            },
+            methods: {
+                calcularPartida() {
+                    if (!this.form.fecha) return;
+                    const fechaObj = new Date(this.form.fecha + 'T00:00:00'); // Fix zona horaria
+                    
+                    const meses = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+                    const mes = meses[fechaObj.getMonth()];
+                    
+                    // Obtener año fiscal/colección. Por defecto tomamos últimos 2 dígitos del año
+                    const year = fechaObj.getFullYear().toString().slice(-2);
+                    
+                    // Lógica sugerida por usuario: DIC25_01. Asumimos _01 fijo o editable
+                    this.form.partidaCodigo = `${mes}${year}_01`;
+                },
+                agregarComponente() {
+                    this.componentes.push({ 
+                        descripcion: '', sufijo: '', maquina: 0, multiplicador: 1, piezasPorPaquete: 0 
+                    });
+                },
+                eliminarComponente(index) {
+                    this.componentes.splice(index, 1);
+                },
+                formatDateUS(dateString) {
+                    if (!dateString) return "";
+                    const parts = dateString.split('-'); // yyyy-mm-dd
+                    return `${parts[1]}/${parts[2]}/${parts[0]}`; // mm/dd/yyyy
+                },
+                generarCSV() {
+                    // Iterar sobre cada componente y generar su propio set de datos o todo junto
+                    // El usuario dijo: "Depende de cuántas partes tenga una prenda es la cantidad de csv"
+                    // Así que generaremos un archivo CSV unificado para que sea más fácil, o separado si prefiere.
+                    // Basado en el archivo subido, parece que es TODO junto en una sola base de datos.
+                    
+                    let csvContent = ",,,,,,,,,,\r\n"; // Fila vacía inicial como en tu ejemplo
+                    csvContent += "MODELO,TOTAL PIEZAS,PARTIDA,CLIENTE,DESCRIPCION,COSTURA,PIEZAS,TALLA,FECHA DE ENTREGA DE ENTREGA,CODIGO,MAQUINA\r\n";
+
+                    const fechaFormatoUS = this.formatDateUS(this.form.fecha);
+
+                    this.componentes.forEach(comp => {
+                        const totalPiezasComp = this.form.totalPrendas * comp.multiplicador;
+                        const numPaquetes = Math.ceil(totalPiezasComp / comp.piezasPorPaquete);
+
+                        for (let i = 1; i <= numPaquetes; i++) {
+                            // Construir fila
+                            const row = [
+                                this.form.modelo,
+                                totalPiezasComp,
+                                this.form.partidaCodigo,
+                                this.form.cliente,
+                                comp.descripcion,
+                                `${i}_${numPaquetes}`,
+                                comp.piezasPorPaquete,
+                                "UNI", // Talla fija por ahora, se puede hacer dinámica
+                                fechaFormatoUS,
+                                `${this.form.partidaCodigo}${comp.sufijo}_${i}_${numPaquetes}`,
+                                comp.maquina
+                            ];
+                            csvContent += row.join(",") + "\r\n";
                         }
-                        return p;
                     });
 
-                    await orderDocRef.update({ progreso: updatedProgreso });
-                    await db.collection('registros_aprobados').doc(scanItem.id).set(scanItem);
-                } catch (e) { alert(e.message); }
-                setProcessingId(null);
-            };
-
-            var handleDelete = async function(scanItem) {
-                if(!confirm("¿Eliminar?")) return;
-                try { await db.collection('registro_produccion').doc(scanItem.id).delete(); } catch(e) {}
-            };
-
-            return (
-                <div className="h-screen flex flex-col bg-slate-100">
-                    <header className="bg-white border-b p-4 flex justify-between items-center">
-                        <h1 className="text-lg font-black text-slate-800">CONSOLIDADOR CIRINEO</h1>
-                        <div className="text-[10px] font-bold bg-slate-800 text-white px-3 py-1 rounded">iOS 10 COMPATIBLE</div>
-                    </header>
-                    <div className="flex-1 overflow-x-auto p-4 flex items-start">
-                        {Object.keys(groups).map(function(mq) {
-                            return <MachineColumn key={mq} machineId={mq} pendingScans={groups[mq]} onApprove={handleApprove} onDelete={handleDelete} processingId={processingId} />
-                        })}
-                    </div>
-                </div>
-            );
-        };
-
-        ReactDOM.render(<App />, document.getElementById('root'));
+                    // Descargar archivo
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", `BASE_DE_DATOS_${this.form.partidaCodigo}.csv`);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            }
+        }).mount('#app')
     </script>
 </body>
 </html>
