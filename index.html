@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CIRINEO CORE v4.0</title>
+    <title>CIRINEO NEXO v5.2 - Vista Previa</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -11,22 +11,44 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
-        .modal-overlay { background: rgba(0,0,0,0.8); animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        body { margin: 0; overflow: hidden; background: #0f172a; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         
-        /* Estilos Dinámicos por Usuario */
-        .user-bg { background-size: cover; background-position: center; transition: all 0.5s ease; }
-        .custom-cursor { cursor: crosshair; }
-        
-        /* Estilos Calculadora */
-        .calc-btn { @apply h-12 rounded-lg font-bold text-xl flex items-center justify-center transition-all; }
+        /* Escáner Rectangular 6:1 con Guía Visual */
+        #reader { width: 100% !important; border: none !important; }
+        #reader video { object-fit: cover !important; height: 120px !important; }
+
+        .scan-frame {
+            position: relative;
+            width: 100%;
+            height: 120px;
+            overflow: hidden;
+            border: 2px solid #3b82f6;
+            border-radius: 8px;
+            background: black;
+        }
+
+        .laser-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #ff0000;
+            box-shadow: 0 0 10px #ff0000;
+            top: 50%;
+            z-index: 20;
+            animation: pulseLaser 1.5s infinite;
+        }
+
+        @keyframes pulseLaser { 0%, 100% { opacity: 0.8; } 50% { opacity: 0.3; } }
+
+        /* Estilo de la tabla de vista previa */
+        .preview-table { font-size: 0.75rem; width: 100%; }
+        .preview-table th { color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px; }
+        .preview-table td { padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
     </style>
 </head>
 <body>
@@ -35,7 +57,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- FIREBASE INITIALIZATION ---
+        // CONFIGURACIÓN FIREBASE (Mantén la tuya)
         const firebaseConfig = {
             apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
             authDomain: "cirineo-cec21.firebaseapp.com",
@@ -47,425 +69,297 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- COMPONENTES AUXILIARES ---
-        const Icon = ({ name, size = 24, className }) => {
+        // BIBLIOTECA DE ICONOS
+        const ICON_LIST = ['user', 'shield', 'star', 'zap', 'camera', 'layers', 'message-square', 'package', 'cpu', 'activity', 'bell', 'coffee', 'anchor', 'heart', 'target', 'box'];
+
+        const Icon = ({ name, size = 20, className }) => {
             const ref = useRef(null);
             useEffect(() => {
                 if (ref.current && lucide.icons[name]) {
                     ref.current.innerHTML = lucide.icons[name].toSvg({ width: size, height: size, class: className });
                 }
             }, [name, size, className]);
-            return <span ref={ref}></span>;
+            return <span ref={ref} className="inline-block leading-none"></span>;
         };
 
-        const Modal = ({ isOpen, onClose, title, children, full = false }) => {
-            if (!isOpen) return null;
-            return (
-                <div className="fixed inset-0 z-[100] modal-overlay flex items-center justify-center p-2 lg:p-6 overflow-hidden">
-                    <div className={`${full ? 'w-full h-full' : 'max-w-4xl w-full max-h-[90vh]'} bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden`}>
-                        <div className="p-4 border-b flex justify-between items-center bg-slate-50">
-                            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">{title}</h2>
-                            <button onClick={onClose} className="p-2 hover:bg-red-100 text-red-500 rounded-full transition-colors"><Icon name="x"/></button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4">{children}</div>
-                    </div>
-                </div>
-            );
-        };
-
-        // --- MAIN APPLICATION ---
-        const App = () => {
-            const [user, setUser] = useState(null);
-            const [loading, setLoading] = useState(true);
-            const [activeModals, setActiveModals] = useState({
-                admin: false, scanner: false, chat: false, consolidator: false, 
-                calc: false, notes: false, calendar: false, repo: false
-            });
-            const [config, setConfig] = useState({ githubRepo: '', shortcuts: [] });
-
-            useEffect(() => {
-                // Cargar configuración global (Repo y Accesos)
-                const unsub = db.collection('settings').doc('global').onSnapshot(doc => {
-                    if (doc.exists) setConfig(doc.data());
-                });
-                return () => unsub();
-            }, []);
-
-            const toggleModal = (key, val) => setActiveModals(prev => ({ ...prev, [key]: val }));
-
-            // Pantalla de Login (Si no hay usuario)
-            if (!user) return <LoginScreen onLogin={setUser} />;
-
-            return (
-                <div className="h-screen w-screen user-bg relative flex flex-col" style={{ backgroundImage: `url(${user.bgImage || 'https://images.unsplash.com/photo-1557683316-973673baf926'})` }}>
-                    
-                    {/* BARRA SUPERIOR (DOCK) */}
-                    <div className="p-4 flex justify-between items-center glass m-4 rounded-2xl">
-                        <div className="flex items-center gap-4">
-                            <img src={user.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'} className="w-12 h-12 rounded-full border-2 border-white shadow-lg" />
-                            <div className="text-white">
-                                <h1 className="font-bold leading-none">{user.name}</h1>
-                                <span className="text-[10px] uppercase tracking-widest opacity-80">{user.role}</span>
-                            </div>
-                        </div>
-                        
-                        <div className="flex gap-2">
-                            {user.pin === '13524680' && (
-                                <button onClick={() => toggleModal('admin', true)} className="p-3 bg-white/20 rounded-xl hover:bg-white/40 text-white"><Icon name="settings"/></button>
-                            )}
-                            <button onClick={() => setUser(null)} className="p-3 bg-red-500/20 rounded-xl hover:bg-red-500/40 text-white"><Icon name="log-out"/></button>
-                        </div>
-                    </div>
-
-                    {/* GRILLA DE ACCESOS DIRECTOS (DESKTOP) */}
-                    <div className="flex-1 p-8 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 overflow-y-auto content-start">
-                        <MenuIcon icon="scan" label="Scanner" color="bg-blue-500" onClick={() => toggleModal('scanner', true)} />
-                        <MenuIcon icon="message-square" label="Chat Grupal" color="bg-green-500" onClick={() => toggleModal('chat', true)} />
-                        
-                        {(user.permissions?.includes('view_consolidator') || user.pin === '13524680') && (
-                            <MenuIcon icon="layers" label="Consolidador" color="bg-orange-500" onClick={() => toggleModal('consolidator', true)} />
-                        )}
-                        
-                        <MenuIcon icon="calculator" label="Calculadora" color="bg-purple-500" onClick={() => toggleModal('calc', true)} />
-                        <MenuIcon icon="calendar" label="Calendario" color="bg-red-500" onClick={() => toggleModal('calendar', true)} />
-                        <MenuIcon icon="file-text" label="Notas" color="bg-yellow-500" onClick={() => toggleModal('notes', true)} />
-
-                        {/* Accesos Directos Personalizados */}
-                        {config.shortcuts?.map((sc, i) => (
-                            <MenuIcon key={i} icon="external-link" label={sc.name} color="bg-slate-700" onClick={() => window.open(sc.url, '_blank')} />
-                        ))}
-                    </div>
-
-                    {/* MODALES --- */}
-                    <Modal isOpen={activeModals.scanner} onClose={() => toggleModal('scanner', false)} title="Scanner de Producción" full>
-                        <ScannerModule user={user} repoUrl={config.githubRepo} />
-                    </Modal>
-
-                    <Modal isOpen={activeModals.admin} onClose={() => toggleModal('admin', false)} title="Panel JVN93 - Control Central">
-                        <AdminPanel config={config} setConfig={setConfig} />
-                    </Modal>
-
-                    <Modal isOpen={activeModals.chat} onClose={() => toggleModal('chat', false)} title="Chat Grupal VIVA ROUSS">
-                        <ChatModule user={user} />
-                    </Modal>
-
-                    <Modal isOpen={activeModals.consolidator} onClose={() => toggleModal('consolidator', false)} title="Consolidador de Producción" full>
-                        <ConsolidatorModule repoUrl={config.githubRepo} />
-                    </Modal>
-
-                    <Modal isOpen={activeModals.calc} onClose={() => toggleModal('calc', false)} title="Calculadora">
-                        <Calculadora />
-                    </Modal>
-                    
-                    <Modal isOpen={activeModals.notes} onClose={() => toggleModal('notes', false)} title="Notas Rápidas">
-                        <NotesModule user={user} />
-                    </Modal>
-
-                    <Modal isOpen={activeModals.calendar} onClose={() => toggleModal('calendar', false)} title="Calendario">
-                        <CalendarModule />
-                    </Modal>
-                </div>
-            );
-        };
-
-        const MenuIcon = ({ icon, label, color, onClick }) => (
-            <button onClick={onClick} className="flex flex-col items-center gap-2 group transform transition active:scale-90">
-                <div className={`${color} w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg group-hover:brightness-110 group-hover:shadow-white/20 transition-all`}>
-                    <Icon name={icon} size={32} className="text-white" />
-                </div>
-                <span className="text-white text-xs font-bold shadow-black drop-shadow-md">{label}</span>
-            </button>
-        );
-
-        // --- MÓDULO: LOGIN ---
+        // --- COMPONENTE: LOGIN ---
         const LoginScreen = ({ onLogin }) => {
             const [pin, setPin] = useState("");
             const handleLogin = async () => {
-                // El pin maestro JVN93 siempre funciona para bootstraping
                 if (pin === '13524680') {
-                    onLogin({ name: "JVN93", pin: "13524680", role: "admin", permissions: ["all"] });
+                    onLogin({ name: "JVN93", pin: "13524680", role: "admin", icon: "shield", theme: "https://images.unsplash.com/photo-1550745165-9bc0b252726f" });
                     return;
                 }
-                const snap = await db.collection('users').where('pin', '==', pin).get();
-                if (!snap.empty) onLogin(snap.docs[0].data());
-                else alert("Acceso Denegado");
+                const doc = await db.collection('users').doc(pin).get();
+                if (doc.exists) onLogin(doc.data());
+                else alert("Acceso denegado. PIN incorrecto.");
             };
             return (
-                <div className="h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
-                    <h1 className="text-3xl font-black mb-8">SISTEMA CIRINEO</h1>
-                    <input type="password" value={pin} onChange={e => setPin(e.target.value)} className="bg-slate-800 text-center text-3xl tracking-widest w-64 p-4 rounded-xl border border-slate-700 mb-6 outline-none" placeholder="PIN"/>
-                    <button onClick={handleLogin} className="bg-blue-600 px-12 py-4 rounded-xl font-bold hover:bg-blue-500 transition-all">INGRESAR</button>
+                <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-6">
+                    <Icon name="cpu" size={60} className="text-cyan-500 mb-6"/>
+                    <h1 className="text-2xl font-black tracking-tighter mb-8">CIRINEO NEXO v5.2</h1>
+                    <input type="password" value={pin} onChange={e=>setPin(e.target.value)} className="bg-slate-900 border border-slate-700 text-center text-4xl w-full max-w-xs p-5 rounded-3xl mb-6 outline-none focus:border-cyan-500" placeholder="PIN"/>
+                    <button onClick={handleLogin} className="bg-cyan-600 hover:bg-cyan-500 w-full max-w-xs py-5 rounded-3xl font-bold transition-all shadow-lg shadow-cyan-900/20">ACCEDER AL NÚCLEO</button>
                 </div>
             );
         };
 
-        // --- MÓDULO: ADMIN PANEL (PARA JVN93) ---
-        const AdminPanel = ({ config, setConfig }) => {
-            const [users, setUsers] = useState([]);
-            const [newUser, setNewUser] = useState({ name: '', pin: '', role: 'operario', permissions: ['scan'] });
-
-            useEffect(() => {
-                const unsub = db.collection('users').onSnapshot(snap => setUsers(snap.docs.map(d => ({id: d.id, ...d.data()}))));
-                return () => unsub();
-            }, []);
-
-            const saveConfig = async () => {
-                await db.collection('settings').doc('global').set(config);
-                alert("Configuración Global Guardada");
-            };
-
-            const addUser = async () => {
-                if(!newUser.pin || !newUser.name) return;
-                await db.collection('users').doc(newUser.pin).set(newUser);
-                setNewUser({ name: '', pin: '', role: 'operario', permissions: ['scan'] });
-            };
-
-            const deleteUser = async (id) => { if(confirm("¿Eliminar?")) await db.collection('users').doc(id).delete(); };
-
-            return (
-                <div className="space-y-8">
-                    {/* Configuración de Repositorio */}
-                    <section className="bg-slate-50 p-4 rounded-xl border">
-                        <h3 className="font-bold mb-4 flex items-center gap-2"><Icon name="github"/> Repositorios GitHub (Imágenes)</h3>
-                        <input value={config.githubRepo} onChange={e => setConfig({...config, githubRepo: e.target.value})} placeholder="https://raw.githubusercontent.com/USUARIO/REPO/main/" className="w-full p-2 border rounded mb-2"/>
-                        <p className="text-[10px] text-slate-500">Nota: Las imágenes deben llamarse igual que el código del modelo (ej: M024.jpg)</p>
-                        <button onClick={saveConfig} className="bg-black text-white px-4 py-2 rounded text-sm mt-2">Guardar Rutas</button>
-                    </section>
-
-                    {/* Gestión de Usuarios */}
-                    <section className="bg-slate-50 p-4 rounded-xl border">
-                        <h3 className="font-bold mb-4">Gestión de Personal</h3>
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
-                            <input placeholder="Nombre" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="p-2 border rounded"/>
-                            <input placeholder="PIN" value={newUser.pin} onChange={e => setNewUser({...newUser, pin: e.target.value})} className="p-2 border rounded"/>
-                            <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value})} className="p-2 border rounded">
-                                <option value="operario">Operario</option>
-                                <option value="supervisor">Supervisor</option>
-                                <option value="manager">Manager</option>
-                            </select>
-                            <button onClick={addUser} className="bg-blue-600 text-white rounded font-bold">Agregar</button>
-                        </div>
-                        <div className="space-y-2">
-                            {users.map(u => (
-                                <div key={u.id} className="flex justify-between items-center p-3 bg-white border rounded shadow-sm">
-                                    <div>
-                                        <div className="font-bold">{u.name} <span className="text-[10px] bg-slate-200 px-1 rounded">{u.role}</span></div>
-                                        <div className="text-xs text-slate-400">PIN: {u.pin}</div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => deleteUser(u.id)} className="text-red-500 p-2"><Icon name="trash-2" size={18}/></button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </section>
-                </div>
-            );
-        };
-
-        // --- MÓDULO: SCANNER + PAPELETA VIRTUAL ---
+        // --- MÓDULO: ESCÁNER PRO 6:1 ---
         const ScannerModule = ({ user, repoUrl }) => {
-            const [lastScan, setLastScan] = useState(null);
-            const [scanning, setScanning] = useState(false);
+            const [isScanning, setIsScanning] = useState(false);
+            const [history, setHistory] = useState([]);
+            const [papeleta, setPapeleta] = useState(null);
+            const lastScan = useRef({ code: '', time: 0 });
 
-            const handleScan = async (code) => {
+            const onScan = async (code) => {
+                const now = Date.now();
                 const cleanCode = code.trim();
-                // Simulación de búsqueda de modelo (M024-P01...) -> Modelo: M024
-                const modelPart = cleanCode.split('-')[0] || cleanCode;
-                const imageUrl = `${repoUrl}${modelPart}.jpg`;
 
-                const scanData = {
-                    code: cleanCode,
-                    model: modelPart,
-                    imageUrl: imageUrl,
-                    user: user.name,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                // 1. Lógica de 3 segundos (Eliminar repetidos automáticos)
+                if (cleanCode === lastScan.current.code && (now - lastScan.current.time) < 3000) {
+                    return; 
+                }
+
+                // 2. Lógica de aviso (Ya escaneada)
+                if (cleanCode === lastScan.current.code && (now - lastScan.current.time) >= 3000) {
+                    alert(`¡ATENCIÓN! La papeleta ${cleanCode} ya se leyó hace poco. Verifica si es un duplicado.`);
+                }
+
+                lastScan.current = { code: cleanCode, time: now };
+                new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play();
+
+                // 3. Procesar datos para papeleta virtual
+                const model = cleanCode.split('-')[0] || 'GENERIC';
+                const img = `${repoUrl}${model}.jpg`;
+                const record = {
+                    codigo_paquete: cleanCode,
+                    tejedor: user.name,
+                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                    timestamp_ms: now,
+                    modelo: model,
+                    imageUrl: img
                 };
 
-                await db.collection('registro_produccion').add(scanData);
-                setLastScan(scanData);
-                // Sonido success
-                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3');
-                audio.play();
+                await db.collection('registro_produccion').add(record);
+                setPapeleta(record);
+                setHistory(prev => [record, ...prev].slice(0, 5));
             };
 
             useEffect(() => {
-                if(scanning) {
-                    const html5QrCode = new Html5Qrcode("reader");
-                    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, handleScan);
-                    return () => { html5QrCode.stop(); };
+                let scanner;
+                if (isScanning) {
+                    scanner = new Html5Qrcode("reader");
+                    scanner.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 350, height: 80 } }, onScan);
                 }
-            }, [scanning]);
+                return () => { if(scanner) scanner.stop(); };
+            }, [isScanning]);
 
-            return (
-                <div className="flex flex-col lg:flex-row gap-6 h-full">
-                    <div className="lg:w-1/2 flex flex-col gap-4">
-                        <div id="reader" className="w-full rounded-xl overflow-hidden bg-black aspect-square"></div>
-                        <button onClick={() => setScanning(!scanning)} className={`py-4 rounded-xl font-bold text-white ${scanning ? 'bg-red-500' : 'bg-green-600'}`}>
-                            {scanning ? 'DETENER CÁMARA' : 'INICIAR CÁMARA'}
-                        </button>
-                    </div>
-
-                    <div className="lg:w-1/2 bg-slate-100 rounded-2xl p-6 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-center">
-                        {lastScan ? (
-                            <div className="animate-fade-in w-full">
-                                <h3 className="text-xl font-black mb-4 tracking-tighter">PAPELETA VIRTUAL</h3>
-                                <img src={lastScan.imageUrl} className="w-full max-h-64 object-contain rounded-lg shadow-xl mb-4 bg-white" onError={(e) => e.target.src='https://placehold.co/400x400?text=Sin+Imagen+en+Repo'} />
-                                <div className="bg-white p-4 rounded-xl shadow-sm border">
-                                    <div className="text-sm text-slate-400">CÓDIGO ESCANEADO</div>
-                                    <div className="text-2xl font-mono font-bold break-all">{lastScan.code}</div>
-                                    <div className="mt-2 text-green-600 font-bold">REGISTRADO CON ÉXITO</div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="text-slate-400">
-                                <Icon name="qr-code" size={64} className="mx-auto mb-4 opacity-20"/>
-                                <p>Esperando escaneo...</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
-        // --- MÓDULO: CONSOLIDADOR INTEGRADO ---
-        const ConsolidatorModule = ({ repoUrl }) => {
-            const [scans, setScans] = useState([]);
-
-            useEffect(() => {
-                const unsub = db.collection('registro_produccion').orderBy('timestamp', 'desc').limit(50).onSnapshot(snap => {
-                    setScans(snap.docs.map(d => ({id: d.id, ...d.data()})));
-                });
-                return () => unsub();
-            }, []);
-
-            return (
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-100 border-b">
-                                <th className="p-3 text-sm">Previsualización</th>
-                                <th className="p-3 text-sm">Código / Modelo</th>
-                                <th className="p-3 text-sm">Operario</th>
-                                <th className="p-3 text-sm">Fecha/Hora</th>
-                                <th className="p-3 text-sm">Estado</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {scans.map(s => (
-                                <tr key={s.id} className="border-b hover:bg-slate-50 transition-colors">
-                                    <td className="p-2">
-                                        <img src={s.imageUrl} className="w-12 h-12 rounded object-cover border" onError={e => e.target.src='https://placehold.co/100'} />
-                                    </td>
-                                    <td className="p-3">
-                                        <div className="font-bold text-sm">{s.code}</div>
-                                        <div className="text-xs text-blue-600 uppercase font-bold">{s.model}</div>
-                                    </td>
-                                    <td className="p-3 text-sm font-medium">{s.user}</td>
-                                    <td className="p-3 text-xs text-slate-500">
-                                        {s.timestamp?.toDate().toLocaleString()}
-                                    </td>
-                                    <td className="p-3">
-                                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-[10px] font-bold">COMPLETADO</span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            );
-        };
-
-        // --- MÓDULO: CHAT GRUPAL ---
-        const ChatModule = ({ user }) => {
-            const [msgs, setMsgs] = useState([]);
-            const [text, setText] = useState("");
-            const scrollRef = useRef();
-
-            useEffect(() => {
-                const unsub = db.collection('chat').orderBy('time', 'asc').limitToLast(30).onSnapshot(snap => {
-                    setMsgs(snap.docs.map(d => d.data()));
-                    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-                });
-                return () => unsub();
-            }, []);
-
-            const send = async () => {
-                if(!text.trim()) return;
-                await db.collection('chat').add({ user: user.name, msg: text, time: new Date() });
-                setText("");
-            };
-
-            return (
-                <div className="flex flex-col h-[500px]">
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 rounded-xl mb-4">
-                        {msgs.map((m, i) => (
-                            <div key={i} className={`flex flex-col ${m.user === user.name ? 'items-end' : 'items-start'}`}>
-                                <span className="text-[10px] font-bold text-slate-400 mb-1">{m.user}</span>
-                                <div className={`p-3 rounded-2xl max-w-[80%] shadow-sm ${m.user === user.name ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border rounded-tl-none'}`}>
-                                    {m.msg}
-                                </div>
-                            </div>
-                        ))}
-                        <div ref={scrollRef}></div>
-                    </div>
-                    <div className="flex gap-2">
-                        <input value={text} onChange={e => setText(e.target.value)} onKeyPress={e => e.key === 'Enter' && send()} placeholder="Escribe un mensaje..." className="flex-1 p-3 border rounded-xl outline-none focus:border-blue-500"/>
-                        <button onClick={send} className="bg-blue-600 text-white p-3 rounded-xl"><Icon name="send"/></button>
-                    </div>
-                </div>
-            );
-        };
-
-        // --- MÓDULO: CALCULADORA ---
-        const Calculadora = () => {
-            const [calc, setCalc] = useState("");
-            const btns = ["7","8","9","/", "4","5","6","*", "1","2","3","-", "0",".","=","+"];
-            const handle = (val) => {
-                if(val === "=") { try { setCalc(eval(calc).toString()); } catch(e) { setCalc("Error"); } }
-                else setCalc(prev => prev + val);
-            };
-            return (
-                <div className="bg-slate-900 p-6 rounded-2xl max-w-xs mx-auto shadow-2xl">
-                    <div className="bg-black text-right text-3xl p-4 rounded-lg text-green-500 font-mono mb-4 h-16 overflow-hidden">{calc || "0"}</div>
-                    <div className="grid grid-cols-4 gap-2">
-                        {btns.map(b => (
-                            <button key={b} onClick={() => handle(b)} className={`calc-btn ${isNaN(b) && b !== '.' ? 'bg-orange-500 text-white' : 'bg-slate-700 text-white'}`}>{b}</button>
-                        ))}
-                        <button onClick={() => setCalc("")} className="col-span-4 bg-red-600 text-white font-bold py-2 rounded-lg mt-2">CLEAR</button>
-                    </div>
-                </div>
-            );
-        };
-
-        // --- MÓDULOS PEQUEÑOS ---
-        const NotesModule = ({ user }) => {
-            const [note, setNote] = useState("");
-            useEffect(() => { db.collection('notes').doc(user.pin).get().then(d => d.exists && setNote(d.data().text)); }, []);
-            const save = () => db.collection('notes').doc(user.pin).set({ text: note });
             return (
                 <div className="space-y-4">
-                    <textarea value={note} onChange={e => setNote(e.target.value)} className="w-full h-64 p-4 border rounded-xl bg-yellow-50 font-serif text-lg outline-none" placeholder="Escribe tus notas aquí..."></textarea>
-                    <button onClick={save} className="w-full bg-slate-800 text-white py-3 rounded-xl font-bold">GUARDAR EN LA NUBE</button>
+                    <div className="scan-frame">
+                        <div id="reader"></div>
+                        <div className="laser-line"></div>
+                    </div>
+                    
+                    <button onClick={() => setIsScanning(!isScanning)} className={`w-full py-4 rounded-2xl font-bold text-white transition-all ${isScanning ? 'bg-red-500' : 'bg-cyan-600'}`}>
+                        {isScanning ? 'DETENER LÁSER' : 'INICIAR ESCÁNER 6:1'}
+                    </button>
+
+                    {papeleta && (
+                        <div className="bg-white rounded-2xl p-4 flex gap-4 items-center animate-bounce-short shadow-xl">
+                            <img src={papeleta.imageUrl} className="w-20 h-20 object-cover rounded-lg border" onError={e=>e.target.src='https://placehold.co/100x100?text=NO+IMG'}/>
+                            <div className="flex-1">
+                                <div className="text-[10px] text-slate-400 font-bold uppercase">Papeleta Virtual</div>
+                                <div className="text-lg font-black text-slate-800 leading-none">{papeleta.modelo}</div>
+                                <div className="text-xs font-mono text-slate-500 mt-1">{papeleta.codigo_paquete}</div>
+                            </div>
+                            <div className="text-green-500"><Icon name="check-circle" size={32}/></div>
+                        </div>
+                    )}
                 </div>
             );
         };
 
-        const CalendarModule = () => (
-            <div className="text-center p-4">
-                <div className="text-6xl font-black text-blue-600 mb-2">{new Date().getDate()}</div>
-                <div className="text-2xl font-bold text-slate-800 uppercase">{new Date().toLocaleString('es-MX', { month: 'long' })}</div>
-                <div className="text-slate-500 mb-8">{new Date().getFullYear()}</div>
-                <div className="grid grid-cols-7 text-xs font-bold text-slate-400 mb-2">
-                    {['D','L','M','M','J','V','S'].map(d => <div key={d}>{d}</div>)}
+        // --- MÓDULO: VISTA PREVIA CONSOLIDADOR (SOLO LECTURA) ---
+        const ConsolidatorPreview = () => {
+            const [data, setData] = useState([]);
+            useEffect(() => {
+                const unsub = db.collection('registro_produccion').orderBy('fecha', 'desc').limit(25).onSnapshot(s => {
+                    setData(s.docs.map(d => ({id: d.id, ...d.data()})));
+                });
+                return () => unsub();
+            }, []);
+
+            return (
+                <div className="bg-slate-900/50 rounded-2xl overflow-hidden border border-white/10">
+                    <div className="p-3 bg-white/5 flex items-center justify-between">
+                        <span className="text-xs font-bold text-cyan-400">MONITOR DE PRODUCCIÓN (LECTURA)</span>
+                        <div className="flex gap-1">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                            <div className="w-2 h-2 rounded-full bg-green-500/50"></div>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="preview-table text-white">
+                            <thead>
+                                <tr className="text-left bg-black/20">
+                                    <th>Papeleta</th>
+                                    <th>Usuario</th>
+                                    <th>Hora</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {data.map(item => (
+                                    <tr key={item.id} className="opacity-80">
+                                        <td className="font-mono text-cyan-300">{item.codigo_paquete}</td>
+                                        <td>{item.tejedor}</td>
+                                        <td className="text-slate-500">{item.fecha?.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                {/* Calendario simplificado */}
-                <div className="grid grid-cols-7 gap-1">
-                    {Array.from({length: 31}).map((_, i) => (
-                        <div key={i} className={`p-2 rounded ${i+1 === new Date().getDate() ? 'bg-blue-600 text-white font-bold' : 'bg-slate-100 text-slate-400'}`}>{i+1}</div>
-                    ))}
+            );
+        };
+
+        // --- PANEL JVN93: ADMINISTRACIÓN Y PERSONALIZACIÓN ---
+        const AdminPanel = ({ config, setConfig }) => {
+            const [users, setUsers] = useState([]);
+            const [editUser, setEditUser] = useState(null);
+
+            useEffect(() => {
+                db.collection('users').onSnapshot(s => setUsers(s.docs.map(d => ({id: d.id, ...d.data()}))));
+            }, []);
+
+            return (
+                <div className="space-y-6">
+                    <div className="bg-slate-100 p-4 rounded-2xl">
+                        <h3 className="text-sm font-bold mb-3 flex items-center gap-2"><Icon name="github"/> Repositorio GitHub</h3>
+                        <input value={config.repo || ''} onChange={e=>setConfig({...config, repo: e.target.value})} className="w-full p-3 bg-white border rounded-xl text-sm" placeholder="https://raw.githubusercontent.com/..."/>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                        {users.map(u => (
+                            <div key={u.id} className="bg-white p-4 rounded-2xl flex items-center justify-between border shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-cyan-400">
+                                        <Icon name={u.icon || 'user'} size={24}/>
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-slate-800">{u.name}</div>
+                                        <div className="text-xs text-slate-400">PIN: {u.pin}</div>
+                                    </div>
+                                </div>
+                                <button onClick={() => setEditUser(u)} className="p-2 bg-slate-100 rounded-full"><Icon name="settings" className="text-slate-500"/></button>
+                            </div>
+                        ))}
+                    </div>
+
+                    {editUser && (
+                        <div className="fixed inset-0 bg-black/90 z-[300] flex items-center justify-center p-4">
+                            <div className="bg-white w-full max-w-sm p-6 rounded-[2rem] space-y-5">
+                                <h2 className="text-xl font-black text-center">PERSONALIZAR</h2>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Fondo de Pantalla (URL)</label>
+                                    <input value={editUser.theme} onChange={e=>setEditUser({...editUser, theme: e.target.value})} className="w-full p-3 bg-slate-100 rounded-xl mt-1 text-xs"/>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-400 uppercase">Icono de Identidad</label>
+                                    <div className="grid grid-cols-6 gap-2 mt-2">
+                                        {ICON_LIST.map(i => (
+                                            <button key={i} onClick={()=>setEditUser({...editUser, icon: i})} className={`p-2 rounded-lg ${editUser.icon === i ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                                <Icon name={i} size={16}/>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={async () => { await db.collection('users').doc(editUser.pin).set(editUser); setEditUser(null); }} className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-bold">GUARDAR</button>
+                                    <button onClick={()=>setEditUser(null)} className="flex-1 bg-slate-200 py-4 rounded-2xl font-bold">CANCELAR</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
+            );
+        };
+
+        // --- APP CORE ---
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [config, setConfig] = useState({ repo: '' });
+            const [modal, setModal] = useState(null);
+
+            useEffect(() => {
+                db.collection('settings').doc('global').onSnapshot(d => d.exists && setConfig(d.data()));
+            }, []);
+
+            if (!user) return <LoginScreen onLogin={setUser} />;
+
+            return (
+                <div className="h-screen w-screen flex flex-col relative overflow-hidden bg-slate-950">
+                    <div className="absolute inset-0 z-0 opacity-40 grayscale" style={{backgroundImage: `url(${user.theme})`, backgroundSize: 'cover', backgroundPosition: 'center'}}></div>
+                    
+                    {/* Header */}
+                    <div className="p-5 flex justify-between items-center glass z-10 border-b border-white/10">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-cyan-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-cyan-900/50">
+                                <Icon name={user.icon || 'user'} />
+                            </div>
+                            <div className="leading-none">
+                                <div className="text-white font-black text-sm">{user.name}</div>
+                                <div className="text-[9px] text-cyan-400 font-bold tracking-widest uppercase">{user.role}</div>
+                            </div>
+                        </div>
+                        <button onClick={() => setUser(null)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-full transition-all"><Icon name="log-out"/></button>
+                    </div>
+
+                    {/* Dashboard */}
+                    <div className="flex-1 p-6 z-10 grid grid-cols-2 gap-4 content-start overflow-y-auto">
+                        <MenuCard label="Scanner" icon="camera" color="bg-cyan-500" onClick={() => setModal('scanner')} />
+                        <MenuCard label="Monitor" icon="layers" color="bg-indigo-500" onClick={() => setModal('preview')} />
+                        <MenuCard label="Calculadora" icon="cpu" color="bg-emerald-500" onClick={() => setModal('calc')} />
+                        <MenuCard label="Chat" icon="message-square" color="bg-blue-500" onClick={() => setModal('chat')} />
+                        
+                        {user.pin === '13524680' && (
+                            <div className="col-span-2 mt-4">
+                                <button onClick={() => setModal('admin')} className="w-full p-4 glass rounded-3xl border-rose-500/30 flex items-center justify-center gap-3 text-rose-400 font-bold">
+                                    <Icon name="shield" size={20}/> PANEL JVN93
+                                </button>
+                            </div>
+                        }
+                    </div>
+
+                    {/* Modales Dinámicos */}
+                    {modal && (
+                        <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col p-4 animate-fade-in">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-white font-black text-lg flex items-center gap-2">
+                                    <Icon name="target" className="text-cyan-500"/> {modal.toUpperCase()}
+                                </h2>
+                                <button onClick={()=>setModal(null)} className="p-3 bg-white/10 rounded-2xl text-white"><Icon name="x"/></button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                {modal === 'scanner' && <ScannerModule user={user} repoUrl={config.repo} />}
+                                {modal === 'preview' && <ConsolidatorPreview />}
+                                {modal === 'admin' && <AdminPanel config={config} setConfig={(c) => { setConfig(c); db.collection('settings').doc('global').set(c); }} />}
+                                {modal === 'calc' && <div className="text-slate-500 text-center py-20 font-bold italic">Cargando calculadora del sistema...</div>}
+                                {modal === 'chat' && <div className="text-slate-500 text-center py-20 font-bold italic">Conectando con el servidor de chat...</div>}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const MenuCard = ({ label, icon, color, onClick }) => (
+            <button onClick={onClick} className="flex flex-col items-center gap-3 p-6 glass rounded-[2.5rem] border-white/5 active:scale-90 transition-all">
+                <div className={`${color} p-4 rounded-2xl shadow-2xl`}>
+                    <Icon name={icon} size={30} className="text-white" />
+                </div>
+                <span className="text-white text-[10px] font-black uppercase tracking-widest">{label}</span>
+            </button>
         );
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
