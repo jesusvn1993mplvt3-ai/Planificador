@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cirineo Ultimate System v2</title>
+    <title>Cirineo Ultimate v3 - Integrated</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -17,48 +17,53 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
-        /* Estilos Base */
+        /* ESTILOS GLOBALES */
         body { overflow: hidden; overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
         
-        /* Animaciones */
+        /* ANIMACIONES */
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes pulse-red { 0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(255, 0, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); } }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(0, 255, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 255, 0, 0); } }
+
         .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .scan-success { animation: pulse-green 0.5s; }
+        .scan-error { animation: pulse-red 0.5s; }
 
-        /* --- TEMAS (Themes) --- */
+        /* --- TEMAS VISUALES --- */
 
-        /* TEMA: TERMINAL (JVN93) */
+        /* JVN93: TERMINAL */
         .theme-terminal { background-color: #0c0c0c; color: #00ff00; font-family: 'Courier New', monospace; }
         .theme-terminal .btn { border: 1px solid #00ff00; background: #001100; text-transform: uppercase; border-radius: 0; }
-        .theme-terminal .btn-scan { border: 2px dashed #00ff00; }
-        .theme-terminal .top-bar { border-bottom: 1px solid #00ff00; }
-
-        /* TEMA: KOF (BALTA) */
-        .theme-kof { background: linear-gradient(135deg, #1a1a1a 0%, #4a0e0e 100%); color: white; font-family: 'Impact', sans-serif; letter-spacing: 1px; }
-        .theme-kof .btn { background: linear-gradient(to bottom, #b91c1c, #7f1d1d); border: 2px solid #fcd34d; transform: skewX(-10deg); box-shadow: 3px 3px 0 #000; text-shadow: 1px 1px 0 #000; }
+        .theme-terminal .card { border: 1px solid #00ff00; background: #000; }
+        
+        /* BALTA: KOF (Videojuego Pelea) */
+        .theme-kof { background: linear-gradient(135deg, #2b0808 0%, #5e0b0b 100%); color: white; font-family: 'Impact', sans-serif; letter-spacing: 0.5px; }
+        .theme-kof .btn { background: linear-gradient(to bottom, #ef4444, #991b1b); border: 2px solid #fcd34d; transform: skewX(-10deg); box-shadow: 3px 3px 0 #000; text-shadow: 1px 1px 0 #000; }
         .theme-kof .btn:active { transform: skewX(-10deg) translateY(2px); box-shadow: 1px 1px 0 #000; }
-        .theme-kof .btn-scan { background: linear-gradient(to bottom, #d97706, #b45309); border-color: white; }
+        .theme-kof .card { background: rgba(0,0,0,0.8); border: 1px solid #ef4444; transform: skewX(-2deg); }
 
-        /* TEMA: MARIO (JOEL) */
-        .theme-mario { background-color: #6b8cff; font-family: 'Arial Rounded MT Bold', 'Verdana', sans-serif; background-image: radial-gradient(#ffffff 15%, transparent 16%), radial-gradient(#ffffff 15%, transparent 16%); background-size: 60px 60px; background-position: 0 0, 30px 30px; }
-        .theme-mario .btn { background: #ef4444; border: 4px solid white; border-radius: 16px; box-shadow: 0 4px 0 #991b1b; color: white; text-transform: uppercase; }
-        .theme-mario .btn:active { transform: translateY(4px); box-shadow: 0 0 0 #991b1b; }
-        .theme-mario .btn-scan { background: #22c55e; box-shadow: 0 4px 0 #15803d; }
+        /* JOEL: MARIO BROS */
+        .theme-mario { background-color: #5c94fc; font-family: 'Arial Rounded MT Bold', 'Verdana', sans-serif; background-image: radial-gradient(white 15%, transparent 16%), radial-gradient(white 15%, transparent 16%); background-size: 30px 30px; background-position: 0 0, 15px 15px; }
+        .theme-mario .btn { background: #e52521; border: 3px solid white; border-radius: 12px; box-shadow: 0 4px 0 #9f110e; color: white; text-transform: uppercase; }
+        .theme-mario .btn:active { transform: translateY(4px); box-shadow: none; }
+        .theme-mario .card { background: #fff; border: 4px solid #fbd000; border-radius: 10px; color: #333; box-shadow: 0 4px 0 rgba(0,0,0,0.2); }
 
-        /* TEMA: PIKACHU (SUSAN) */
-        .theme-pokemon { background-color: #facc15; color: #333; font-family: 'Verdana', sans-serif; }
-        .theme-pokemon .btn { background: white; border: 4px solid #1e293b; border-radius: 12px; color: #1e293b; font-weight: bold; }
-        .theme-pokemon .btn-scan { background: #ef4444; color: white; border-radius: 50%; width: 180px; height: 180px; border-width: 8px; position: relative; overflow: hidden; }
-        .theme-pokemon .btn-scan::after { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 4px; background: #1e293b; transform: translateY(-50%); }
-        .theme-pokemon .btn-scan::before { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: white; border: 6px solid #1e293b; border-radius: 50%; z-index: 2; }
+        /* SUSAN: POKEMON (PIKACHU) */
+        .theme-pokemon { background-color: #facc15; color: #374151; font-family: 'Verdana', sans-serif; }
+        .theme-pokemon .btn { background: white; border: 3px solid #374151; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        .theme-pokemon .btn::after { content: ''; position: absolute; width: 100%; height: 50%; background: #ef4444; top: 0; left: 0; border-bottom: 3px solid #374151; }
+        .theme-pokemon .btn-center { width: 15px; height: 15px; background: white; border: 3px solid #374151; border-radius: 50%; position: absolute; z-index: 10; }
+        .theme-pokemon .card { background: #fdfdfd; border: 2px solid #3b82f6; border-radius: 8px; box-shadow: 3px 3px 0 rgba(0,0,0,0.1); }
 
-        /* TEMA: IOS PRO (MARCO) */
+        /* MARCO: iOS PRO */
         .theme-ios { background-color: #f2f2f7; color: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-        .theme-ios .btn { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-radius: 14px; color: #007aff; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .theme-ios .btn-scan { background: #007aff; color: white; border-radius: 50%; box-shadow: 0 8px 20px rgba(0,122,255,0.3); }
+        .theme-ios .btn { background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); border-radius: 12px; color: #007aff; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: none; }
+        .theme-ios .btn-primary { background: #007aff; color: white; }
+        .theme-ios .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; }
 
-        /* Cámara y Video */
+        /* Cámara */
         #reader { width: 100%; height: 100%; object-fit: cover; background: black; }
         video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
     </style>
@@ -67,10 +72,10 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
         const { jsPDF } = window.jspdf;
 
-        // --- FIREBASE CONFIG ---
+        // --- FIREBASE CONFIG (Tu configuración existente) ---
         const firebaseConfig = {
             apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
             authDomain: "cirineo-cec21.firebaseapp.com",
@@ -82,27 +87,25 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- LISTA DE USUARIOS (HARDCODED PARA RECUPERACIÓN) ---
+        // --- USUARIOS HARDCODED (Para recuperación automática) ---
         const INITIAL_USERS = [
             { pin: "13524680", name: "JVN93", role: "admin", theme: "terminal", permissions: ["all"] },
             { pin: "4895", name: "BALTA", role: "scanner", theme: "kof", permissions: ["scan"] },
             { pin: "6574", name: "JOEL", role: "viewer", theme: "mario", permissions: ["scan", "view"] },
             { pin: "5555", name: "SUSAN", role: "manager", theme: "pokemon", permissions: ["scan", "view", "approve"] },
-            { pin: "0000", name: "MARCO ESPINOZA", role: "pro", theme: "ios", permissions: ["scan", "view", "approve", "shortcuts"], shortcuts: [{name: "Reporte Diario", url: "https://google.com"}, {name: "Inventario", url: "https://google.com"}] }
+            { pin: "0000", name: "MARCO ESPINOZA", role: "pro", theme: "ios", permissions: ["scan", "view", "approve", "shortcuts"], shortcuts: [{name: "Reporte", url: "https://google.com"}, {name: "Inventario", url: "https://google.com"}] }
         ];
 
         // --- ICONOS ---
-        const Icon = ({ name, size = 24, className, onClick }) => {
+        const Icon = ({ name, size = 20, className }) => {
             const ref = useRef(null);
             useEffect(() => {
-                if (ref.current && lucide.icons[name]) {
-                    ref.current.innerHTML = lucide.icons[name].toSvg({ width: size, height: size, class: className });
-                }
+                if (ref.current && lucide.icons[name]) ref.current.innerHTML = lucide.icons[name].toSvg({ width: size, height: size, class: className });
             }, [name, className]);
-            return <span ref={ref} onClick={onClick} className={onClick ? "cursor-pointer" : ""}></span>;
+            return <span ref={ref}></span>;
         };
 
-        // --- SONIDOS ---
+        // --- SONIDOS TEMÁTICOS (Web Audio API) ---
         const playSound = (type, theme) => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
@@ -111,289 +114,258 @@
             gain.connect(ctx.destination);
             const now = ctx.currentTime;
 
+            // SONIDOS PERSONALIZADOS
             if (theme === 'pokemon') {
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(1500, now+0.1);
-                gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.2);
-                osc.start(now); osc.stop(now+0.2);
+                // Pikachu Style
+                if (type === 'success') {
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(800, now); osc.frequency.linearRampToValueAtTime(1400, now+0.1);
+                    gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.2);
+                    osc.start(now); osc.stop(now+0.2);
+                } else { // Error
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.linearRampToValueAtTime(100, now+0.3);
+                    osc.start(now); osc.stop(now+0.3);
+                }
             } else if (theme === 'mario') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(988, now);
-                setTimeout(() => { const o2=ctx.createOscillator(); const g2=ctx.createGain(); o2.connect(g2); g2.connect(ctx.destination); o2.type='square'; o2.frequency.setValueAtTime(1319, ctx.currentTime); o2.start(); o2.stop(ctx.currentTime+0.1); }, 100);
-                osc.start(now); osc.stop(now+0.1);
+                // Coin Style
+                if (type === 'success') {
+                    osc.type = 'square'; osc.frequency.setValueAtTime(988, now); gain.gain.value = 0.1;
+                    osc.start(now); osc.stop(now+0.1);
+                    setTimeout(()=>{
+                        const o2=ctx.createOscillator(); const g2=ctx.createGain(); o2.connect(g2); g2.connect(ctx.destination);
+                        o2.type='square'; o2.frequency.setValueAtTime(1319, ctx.currentTime); g2.gain.value=0.1;
+                        o2.start(); o2.stop(ctx.currentTime+0.1);
+                    }, 80);
+                } else { // Pipe Hit
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(100, now); osc.frequency.linearRampToValueAtTime(50, now+0.15);
+                    osc.start(now); osc.stop(now+0.15);
+                }
             } else if (theme === 'kof') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now+0.2);
-                gain.gain.exponentialRampToValueAtTime(0.01, now+0.3); osc.start(now); osc.stop(now+0.3);
+                // Punch Style
+                if (type === 'success') {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.frequency.exponentialRampToValueAtTime(50, now+0.1);
+                    gain.gain.setValueAtTime(1, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.1);
+                    osc.start(now); osc.stop(now+0.1);
+                } else {
+                     osc.type = 'square'; osc.frequency.setValueAtTime(50, now); osc.start(now); osc.stop(now+0.3);
+                }
             } else {
-                osc.frequency.setValueAtTime(type==='error'?200:800, now); osc.type = type==='error'?'sawtooth':'sine';
-                osc.start(now); osc.stop(now+0.15);
+                // Standard / iOS / Terminal
+                if (type === 'success') {
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(1000, now); osc.start(now); osc.stop(now+0.1);
+                } else {
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, now); osc.start(now); osc.stop(now+0.2);
+                }
             }
         };
 
-        // --- LOGIN SCREEN ---
+        // --- COMPONENTE: LOGIN ---
         const LoginScreen = ({ onLogin }) => {
             const [pin, setPin] = useState("");
             const [loading, setLoading] = useState(false);
 
             const handleLogin = async () => {
                 setLoading(true);
-                
-                // 1. REVISIÓN LOCAL (PRIORIDAD ALTA)
-                // Esto arregla el problema de "Pin Incorrecto" si la BD está sucia
-                const hardcodedUser = INITIAL_USERS.find(u => u.pin === pin);
-
-                if (hardcodedUser) {
-                    // Si existe en nuestra lista fija, ACTUALIZAMOS LA BD y entramos
-                    console.log("Usuario encontrado localmente. Sincronizando DB...");
-                    try {
-                        await db.collection('users').doc(hardcodedUser.pin).set(hardcodedUser);
-                    } catch (e) {
-                        console.error("Error sync usuario:", e); // No bloqueamos el login si falla internet
-                    }
-                    onLogin(hardcodedUser);
+                // 1. Check Local (Recuperación)
+                const hardcoded = INITIAL_USERS.find(u => u.pin === pin);
+                if (hardcoded) {
+                    try { await db.collection('users').doc(hardcoded.pin).set(hardcoded); } catch(e){} // Sync silent
+                    onLogin(hardcoded);
                     return;
                 }
-
-                // 2. REVISIÓN DB (FALLBACK)
-                // Por si agregas usuarios nuevos que no están en el código
+                // 2. Check DB
                 try {
-                    const userSnap = await db.collection('users').where('pin', '==', pin).get();
-                    if (!userSnap.empty) {
-                        onLogin(userSnap.docs[0].data());
-                    } else {
-                        alert("PIN INCORRECTO");
-                        setPin("");
-                    }
-                } catch (e) {
-                    alert("Error de conexión: " + e.message);
-                }
+                    const snap = await db.collection('users').where('pin', '==', pin).get();
+                    if (!snap.empty) onLogin(snap.docs[0].data());
+                    else { alert("PIN INCORRECTO"); setPin(""); }
+                } catch(e) { alert("Error Conexión"); }
                 setLoading(false);
             };
 
             return (
                 <div className="h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
-                    <div className="mb-8 text-center animate-fade-in">
-                        <Icon name="shield-check" size={50} className="mx-auto mb-2 text-blue-500"/>
-                        <h1 className="text-2xl font-black">ACCESO CIRINEO</h1>
-                        <p className="text-slate-400 text-sm">Ingrese su PIN personal</p>
+                    <div className="mb-6 text-center animate-fade-in">
+                        <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-green-400">CIRINEO v3</h1>
+                        <p className="text-slate-400 text-xs tracking-widest mt-1">ULTIMATE SCANNER</p>
                     </div>
-                    
-                    <input type="password" value={pin} readOnly className="bg-slate-800 text-center text-3xl tracking-[10px] w-full max-w-[200px] py-4 rounded-lg mb-6 border border-slate-700 outline-none"/>
-
-                    <div className="grid grid-cols-3 gap-4 w-full max-w-[280px]">
-                        {[1,2,3,4,5,6,7,8,9].map(n => (
-                            <button key={n} onClick={() => setPin(p => p.length < 8 ? p + n : p)} className="bg-slate-800 p-4 rounded-lg text-xl font-bold active:bg-blue-900">{n}</button>
-                        ))}
-                        <button onClick={() => setPin("")} className="bg-red-900/50 text-red-400 p-4 rounded-lg flex justify-center items-center"><Icon name="x"/></button>
-                        <button onClick={() => setPin(p => p + "0")} className="bg-slate-800 p-4 rounded-lg text-xl font-bold">0</button>
-                        <button onClick={handleLogin} className="bg-blue-600 p-4 rounded-lg flex justify-center items-center"><Icon name="arrow-right"/></button>
+                    <div className="bg-slate-800 p-4 rounded-xl text-3xl font-mono tracking-[0.5em] mb-6 border border-slate-700 w-64 text-center h-16 flex items-center justify-center">
+                        {pin ? pin.replace(/./g, '•') : <span className="text-slate-600 text-sm tracking-normal">INGRESE PIN</span>}
                     </div>
-                    {loading && <p className="mt-4 text-xs animate-pulse text-blue-400">Verificando credenciales...</p>}
+                    <div className="grid grid-cols-3 gap-3 w-64">
+                        {[1,2,3,4,5,6,7,8,9].map(n => <button key={n} onClick={()=>setPin(p=>p.length<8?p+n:p)} className="bg-slate-700 h-16 rounded-lg text-xl font-bold active:bg-blue-600 transition-colors">{n}</button>)}
+                        <button onClick={()=>setPin("")} className="bg-red-900/50 text-red-400 rounded-lg flex items-center justify-center"><Icon name="x"/></button>
+                        <button onClick={()=>setPin(p=>p+"0")} className="bg-slate-700 h-16 rounded-lg text-xl font-bold">0</button>
+                        <button onClick={handleLogin} className="bg-green-600 text-white rounded-lg flex items-center justify-center"><Icon name="arrow-right"/></button>
+                    </div>
+                    {loading && <p className="mt-4 text-xs animate-pulse text-blue-400">Accediendo...</p>}
                 </div>
             );
         };
 
-        // --- CHAT MODULE ---
-        const ChatModule = ({ user, onClose }) => {
-            const [msgs, setMsgs] = useState([]);
-            const [text, setText] = useState("");
-            const messagesEndRef = useRef(null);
+        // --- COMPONENTE: APP PRINCIPAL ---
+        const MainApp = ({ user, onLogout }) => {
+            const [scanning, setScanning] = useState(false);
+            const [orders, setOrders] = useState([]); // Cache de órdenes para validar
+            const [lastScan, setLastScan] = useState(null); // Último escaneo para feedback
+            const [showChat, setShowChat] = useState(false);
+            const [showConsolidator, setShowConsolidator] = useState(false);
+            const scannerRef = useRef(null);
 
+            // 1. CARGAR ÓRDENES EN SEGUNDO PLANO (Integración con CIRINEO.html)
             useEffect(() => {
-                const unsub = db.collection('chat_grupal').orderBy('timestamp', 'desc').limit(50)
-                    .onSnapshot(snap => setMsgs(snap.docs.map(d => d.data()).reverse()));
+                const unsub = db.collection('orders').where('status', '!=', 'ARCHIVADO').onSnapshot(snap => {
+                    const loaded = snap.docs.map(d => ({...d.data(), id: d.id}));
+                    setOrders(loaded);
+                });
                 return () => unsub();
             }, []);
 
-            useEffect(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs]);
-
-            const sendMsg = async () => {
-                if (!text.trim()) return;
-                await db.collection('chat_grupal').add({
-                    user: user.name,
-                    msg: text,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                    role: user.role
-                });
-                setText("");
-            };
-
-            const downloadPDF = () => {
-                const doc = new jsPDF();
-                const now = new Date();
-                const signature = `ESTA ES UNA COPIA DE LA CONVERSACIÓN GRUPAL DE VIVA ROUSS "TEJIDO" FUE DESCARGADO EL DÍA ${now.toLocaleDateString()} A LA HORA ${now.toLocaleTimeString()} POR ${user.name} QUE USA EL PIN ${user.pin}`;
-
-                doc.setFontSize(8); doc.setTextColor(150); doc.text(signature, 10, 10);
-                doc.setFontSize(12); doc.setTextColor(0);
-                
-                let y = 20;
-                msgs.forEach(m => {
-                    if (y > 280) { doc.addPage(); y = 20; }
-                    doc.setFont(undefined, 'bold'); doc.text(`${m.user}:`, 10, y);
-                    doc.setFont(undefined, 'normal'); doc.text(`${m.msg}`, 50, y);
-                    y += 10;
-                });
-
-                doc.setProperties({ title: "Chat Log", subject: signature, keywords: signature });
-                doc.save(`chat_log_${now.getTime()}.pdf`);
-            };
-
-            return (
-                <div className="fixed inset-0 bg-black/90 z-50 flex flex-col p-4 animate-fade-in text-white">
-                    <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
-                        <h2 className="font-bold">Chat Grupal</h2>
-                        <div className="flex gap-2">
-                            <button onClick={downloadPDF} className="bg-blue-600 px-3 py-1 rounded text-xs">PDF</button>
-                            <button onClick={onClose} className="bg-red-600 px-3 py-1 rounded text-xs">X</button>
-                        </div>
-                    </div>
-                    <div className="flex-1 overflow-y-auto space-y-2 mb-4 p-2">
-                        {msgs.map((m, i) => (
-                            <div key={i} className={`p-2 rounded max-w-[85%] text-sm ${m.user === user.name ? 'bg-blue-900 ml-auto' : 'bg-gray-800'}`}>
-                                <div className="text-[10px] text-gray-400 font-bold mb-1">{m.user}</div>
-                                <div>{m.msg}</div>
-                            </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                    </div>
-                    <div className="flex gap-2">
-                        <input value={text} onChange={e => setText(e.target.value)} placeholder="Mensaje..." className="flex-1 bg-gray-800 rounded p-3 outline-none"/>
-                        <button onClick={sendMsg} className="bg-green-600 px-4 rounded"><Icon name="send" size={20}/></button>
-                    </div>
-                </div>
-            );
-        };
-
-        // --- MAIN APP ---
-        const MainApp = ({ user, onLogout }) => {
-            const [scanning, setScanning] = useState(false);
-            const [showChat, setShowChat] = useState(false);
-            const [scanCount, setScanCount] = useState(0);
-            const scannerRef = useRef(null);
-
-            // AUTO-START CAMERA LOGIC
+            // 2. LÓGICA DE CÁMARA
             useEffect(() => {
-                if (scanning) {
-                    initCamera();
-                } else {
-                    stopCamera();
-                }
+                if (scanning) startCamera();
+                else stopCamera();
             }, [scanning]);
 
-            const initCamera = async () => {
+            const startCamera = async () => {
                 try {
                     const devices = await Html5Qrcode.getCameras();
                     if (devices && devices.length) {
-                        // INTENTAR FORZAR CÁMARA TRASERA (Normalmente es el último índice o el índice 1)
-                        // Si hay 2 cámaras: 0 suele ser frontal, 1 trasera.
-                        // Si hay más, la última suele ser la trasera "main".
+                        // Forzar cámara trasera (Intento inteligente)
                         let cameraId = devices[0].id;
+                        // Si hay más de 1, buscamos palabras clave o usamos la segunda (índice 1)
                         if (devices.length > 1) {
-                            // Buscamos palabras clave 'back' o 'environment'
-                            const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera'));
-                            if (backCamera) {
-                                cameraId = backCamera.id;
-                            } else {
-                                cameraId = devices[1].id; // Fallback a la segunda cámara
-                            }
+                            const back = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera') || d.label.toLowerCase().includes('environment'));
+                            cameraId = back ? back.id : devices[1].id;
                         }
 
                         const html5QrCode = new Html5Qrcode("reader");
                         scannerRef.current = html5QrCode;
-
                         await html5QrCode.start(
                             cameraId, 
-                            { fps: 10, qrbox: { width: 250, height: 250 } },
+                            { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
                             (decodedText) => handleScan(decodedText),
                             () => {}
                         );
-                    } else {
-                        alert("No se detectaron cámaras.");
-                        setScanning(false);
-                    }
-                } catch (err) {
-                    console.error(err);
-                    alert("Error cámara: " + err);
-                    setScanning(false);
-                }
+                    } else { alert("No se encontró cámara"); setScanning(false); }
+                } catch(e) { console.error(e); alert("Error Cámara: " + e.message); setScanning(false); }
             };
 
             const stopCamera = () => {
                 if (scannerRef.current) {
-                    scannerRef.current.stop().then(() => {
+                    scannerRef.current.stop().catch(e=>console.error(e)).finally(() => {
                         scannerRef.current.clear();
                         scannerRef.current = null;
-                    }).catch(err => console.error("Error stop", err));
+                    });
                 }
             };
 
-            const handleScan = (code) => {
-                playSound('success', user.theme);
-                setScanCount(p => p + 1);
-                
-                // Pausa breve para no leer el mismo código 100 veces
+            // 3. PROCESAMIENTO DEL ESCANEO (INTEGRACIÓN REAL)
+            const handleScan = async (code) => {
+                // Evitar lecturas dobles muy rápidas
                 if (scannerRef.current) scannerRef.current.pause();
 
-                db.collection('registro_produccion').add({
-                    codigo: code,
-                    usuario: user.name,
-                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                    hora: new Date().toLocaleTimeString()
-                });
+                const cleanCode = code.trim().toUpperCase();
+                
+                // 3.1. Validar contra órdenes cargadas
+                let foundPkg = null;
+                let foundOrder = null;
 
+                for (const o of orders) {
+                    if (o.progreso) {
+                        const p = o.progreso.find(pkg => pkg.codigoUnico === cleanCode);
+                        if (p) { foundPkg = p; foundOrder = o; break; }
+                    }
+                }
+
+                if (foundPkg && foundOrder) {
+                    playSound('success', user.theme);
+                    // 3.2. Subir a Firebase (Formato Consolidador)
+                    // Checar duplicado rápido (opcional, Firestore lo maneja pero mejor evitar escritura)
+                    try {
+                         // Crear registro compatible con Consolidador.html
+                         await db.collection('registro_produccion').add({
+                            codigo_paquete: cleanCode,
+                            orderId: String(foundOrder.id),
+                            modelo: foundOrder.codigo,
+                            partida: foundOrder.partida,
+                            paquete_indice: foundPkg.paqueteNum,
+                            paquete_total: foundPkg.paquetesDePieza,
+                            piezas_en_paquete: foundPkg.cantidad,
+                            tejedor: user.name,
+                            fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                            fecha_scan: new Date().toLocaleString('es-MX'),
+                            tipo: "produccion"
+                         });
+                         setLastScan({ status: 'ok', msg: `${foundOrder.codigo} - PQT ${foundPkg.paqueteNum}` });
+                    } catch(e) {
+                         console.error(e);
+                         setLastScan({ status: 'err', msg: "Error al guardar" });
+                    }
+                } else {
+                    playSound('error', user.theme);
+                    setLastScan({ status: 'err', msg: "CÓDIGO NO ENCONTRADO" });
+                }
+
+                // Reanudar cámara
                 setTimeout(() => {
-                    if (scannerRef.current) scannerRef.current.resume();
+                    if (scanning && scannerRef.current) scannerRef.current.resume();
                 }, 1500);
             };
 
-            // Clase CSS dinámica según tema
+            // CLASE BASE DEL TEMA
             const themeClass = `h-screen flex flex-col theme-${user.theme}`;
 
             return (
                 <div className={themeClass}>
                     {/* TOP BAR */}
-                    <div className="top-bar p-4 flex justify-between items-center bg-black/5 shadow-sm z-10">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center font-bold border border-white/50 text-lg">
+                    <div className="p-4 flex justify-between items-center bg-black/10 backdrop-blur-sm z-20">
+                        <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 rounded-full border-2 border-current flex items-center justify-center text-xl font-black uppercase">
                                 {user.name.charAt(0)}
                             </div>
-                            <div className="leading-tight">
+                            <div className="leading-none">
                                 <div className="font-bold text-sm">{user.name}</div>
-                                <div className="text-[10px] opacity-70">{user.role.toUpperCase()}</div>
+                                <div className="text-[10px] opacity-70">{user.role}</div>
                             </div>
                         </div>
-                        <button onClick={onLogout} className="p-2 bg-red-500/20 rounded-full"><Icon name="log-out" size={18}/></button>
+                        <button onClick={onLogout} className="p-2 opacity-70"><Icon name="log-out"/></button>
                     </div>
 
-                    {/* CONTENT */}
-                    <div className="flex-1 relative bg-black/5 overflow-hidden flex flex-col">
+                    {/* CONTENT AREA */}
+                    <div className="flex-1 relative bg-black/5 flex flex-col overflow-hidden">
                         {scanning ? (
-                            <div className="absolute inset-0 bg-black flex flex-col z-20">
+                            <div className="absolute inset-0 bg-black flex flex-col z-30">
                                 <div className="relative flex-1">
                                     <div id="reader"></div>
-                                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                                    {/* Overlay Visual */}
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                         <div className="w-64 h-64 border-2 border-white/50 relative">
-                                            <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-500"></div>
-                                            <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-500"></div>
-                                            <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-500"></div>
-                                            <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-500"></div>
+                                            <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-green-500"></div>
+                                            <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-green-500"></div>
+                                            <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-green-500"></div>
+                                            <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-green-500"></div>
                                         </div>
                                     </div>
+                                    {lastScan && (
+                                        <div className={`absolute bottom-10 left-0 right-0 mx-auto w-3/4 text-center py-2 rounded font-bold text-white shadow-lg ${lastScan.status === 'ok' ? 'bg-green-600 scan-success' : 'bg-red-600 scan-error'}`}>
+                                            {lastScan.msg}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="p-4 bg-gray-900 flex justify-between items-center text-white">
-                                    <span className="font-mono">Escaneados: {scanCount}</span>
-                                    <button onClick={() => setScanning(false)} className="bg-red-600 px-6 py-2 rounded-full font-bold">DETENER</button>
+                                <div className="p-4 bg-gray-900 flex justify-center">
+                                    <button onClick={()=>{setScanning(false); setLastScan(null);}} className="bg-red-600 text-white font-bold py-3 px-8 rounded-full shadow-lg">DETENER CÁMARA</button>
                                 </div>
                             </div>
                         ) : (
                             <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-slide-up">
-                                <button onClick={() => setScanning(true)} className="btn btn-scan w-48 h-48 flex flex-col items-center justify-center gap-2 text-xl font-bold shadow-xl transition-transform transform active:scale-95">
-                                    <Icon name="scan-barcode" size={48}/>
-                                    <span>ESCANEAR</span>
+                                <button onClick={()=>setScanning(true)} className="btn w-48 h-48 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-xl active:scale-95 transition-transform">
+                                    <Icon name="scan" size={48}/>
+                                    <span className="text-xl font-black">ESCANEAR</span>
                                 </button>
                                 
                                 {user.role === 'pro' && user.shortcuts && (
-                                    <div className="grid grid-cols-2 gap-3 w-full">
-                                        {user.shortcuts.map((sc, i) => (
-                                            <a key={i} href={sc.url} target="_blank" className="btn p-3 text-center text-xs block">{sc.name}</a>
+                                    <div className="grid grid-cols-2 gap-3 w-full max-w-sm">
+                                        {user.shortcuts.map((sc,i)=>(
+                                            <a key={i} href={sc.url} target="_blank" className="card p-3 text-center font-bold text-sm block no-underline text-current">{sc.name}</a>
                                         ))}
                                     </div>
                                 )}
@@ -402,28 +374,145 @@
                     </div>
 
                     {/* BOTTOM NAV */}
-                    <div className="p-3 bg-white/10 backdrop-blur-md flex justify-around items-center border-t border-white/10 pb-6">
-                        <button onClick={() => setShowChat(true)} className="flex flex-col items-center opacity-80 active:scale-95">
+                    <div className="p-2 pb-6 flex justify-around items-center bg-white/5 backdrop-blur-md border-t border-white/10 z-20">
+                        <button onClick={()=>setShowChat(true)} className="flex flex-col items-center opacity-70 hover:opacity-100 p-2">
                             <Icon name="message-circle" size={24}/>
                             <span className="text-[10px] font-bold mt-1">CHAT</span>
                         </button>
+                        
                         {(user.permissions.includes('view') || user.permissions.includes('approve')) && (
-                            <button className="flex flex-col items-center opacity-80 active:scale-95">
+                            <button onClick={()=>setShowConsolidator(true)} className="flex flex-col items-center opacity-70 hover:opacity-100 p-2 relative">
                                 <Icon name="clipboard-list" size={24}/>
-                                <span className="text-[10px] font-bold mt-1">PRODUCCIÓN</span>
+                                {user.permissions.includes('approve') && <span className="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+                                <span className="text-[10px] font-bold mt-1">PROD.</span>
                             </button>
                         )}
                     </div>
 
-                    {/* MODAL CHAT */}
-                    {showChat && <ChatModule user={user} onClose={() => setShowChat(false)} />}
+                    {/* MODALES EXTERNOS */}
+                    {showChat && <ChatModule user={user} onClose={()=>setShowChat(false)} />}
+                    {showConsolidator && <MiniConsolidator user={user} onClose={()=>setShowConsolidator(false)} />}
+                </div>
+            );
+        };
+
+        // --- MÓDULO CHAT (PDF + FIRMA) ---
+        const ChatModule = ({ user, onClose }) => {
+            const [msgs, setMsgs] = useState([]);
+            const [txt, setTxt] = useState("");
+            const bottomRef = useRef(null);
+
+            useEffect(()=>{
+                const unsub = db.collection('chat_grupal').orderBy('timestamp','desc').limit(50).onSnapshot(s => setMsgs(s.docs.map(d=>d.data()).reverse()));
+                return ()=>unsub();
+            },[]);
+            useEffect(()=>bottomRef.current?.scrollIntoView({behavior:'smooth'}),[msgs]);
+
+            const send = async () => {
+                if(!txt.trim()) return;
+                await db.collection('chat_grupal').add({ user: user.name, msg: txt, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                setTxt("");
+            };
+
+            const downloadPDF = () => {
+                const doc = new jsPDF();
+                const now = new Date();
+                const firma = `ESTA ES UNA COPIA DE LA CONVERSACIÓN GRUPAL DE VIVA ROUSS "TEJIDO" FUE DESCARGADO EL DÍA ${now.toLocaleDateString()} A LA HORA ${now.toLocaleTimeString()} POR ${user.name} QUE USA EL PIN ${user.pin}`;
+                
+                doc.setFontSize(8); doc.setTextColor(150); doc.text(firma, 10, 10);
+                doc.setProperties({ title: "Chat Log", subject: firma, keywords: firma }); // Firma en metadatos
+                
+                doc.setFontSize(10); doc.setTextColor(0);
+                let y = 20;
+                msgs.forEach(m => {
+                    if(y>280){doc.addPage(); y=20;}
+                    doc.setFont(undefined,'bold'); doc.text(`${m.user}:`, 10, y);
+                    doc.setFont(undefined,'normal'); doc.text(`${m.msg}`, 40, y);
+                    y+=7;
+                });
+                doc.save(`chat_${now.getTime()}.pdf`);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/90 z-50 flex flex-col p-4 animate-fade-in text-white font-sans">
+                    <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
+                        <h3 className="font-bold">CHAT PLANTA</h3>
+                        <div className="flex gap-2">
+                            <button onClick={downloadPDF} className="bg-blue-600 px-2 py-1 rounded text-xs font-bold">PDF</button>
+                            <button onClick={onClose} className="bg-red-600 px-2 py-1 rounded text-xs font-bold">X</button>
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto space-y-2 mb-2">
+                        {msgs.map((m,i)=>(
+                            <div key={i} className={`p-2 rounded text-sm max-w-[80%] ${m.user===user.name?'bg-blue-900 ml-auto':'bg-gray-800'}`}>
+                                <div className="text-[10px] font-bold opacity-50">{m.user}</div>
+                                <div>{m.msg}</div>
+                            </div>
+                        ))}
+                        <div ref={bottomRef}></div>
+                    </div>
+                    <div className="flex gap-2">
+                        <input value={txt} onChange={e=>setTxt(e.target.value)} className="flex-1 bg-gray-800 rounded p-2 text-white border border-gray-600 outline-none" placeholder="Escribir..."/>
+                        <button onClick={send} className="bg-green-600 px-4 rounded font-bold"><Icon name="send"/></button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MINI CONSOLIDADOR (SOLO VISTA/APROBACIÓN RÁPIDA) ---
+        const MiniConsolidator = ({ user, onClose }) => {
+            const [items, setItems] = useState([]);
+            useEffect(() => {
+                const u = db.collection('registro_produccion').orderBy('fecha','desc').limit(20).onSnapshot(s=>setItems(s.docs.map(d=>({...d.data(), id:d.id}))));
+                return ()=>u();
+            },[]);
+
+            const canApprove = user.permissions.includes('approve');
+            
+            const action = async (id, type) => {
+                if(!confirm(type==='del'?"¿Borrar?":"¿Aprobar?")) return;
+                try {
+                    if(type==='del') await db.collection('registro_produccion').doc(id).delete();
+                    else {
+                        const it = items.find(i=>i.id===id);
+                        // Lógica simplificada: Mover a aprobados
+                        await db.collection('registros_aprobados').doc(id).set({...it, aprobadoPor: user.name, fechaAprobacion: new Date()});
+                        // Nota: La actualización del status 'Verde' en la Orden real lo hace el Consolidador Principal (PC), aquí solo marcamos el registro.
+                    }
+                } catch(e){ alert(e.message); }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-slate-100 z-50 flex flex-col animate-slide-up text-slate-800 font-sans">
+                    <div className="bg-white p-4 shadow flex justify-between items-center">
+                        <h3 className="font-bold">Últimos Escaneos</h3>
+                        <button onClick={onClose} className="p-2 bg-slate-200 rounded-full"><Icon name="x"/></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                        {items.map(it => (
+                            <div key={it.id} className="bg-white p-3 rounded shadow-sm border-l-4 border-indigo-500">
+                                <div className="flex justify-between font-bold text-sm">
+                                    <span>{it.codigo_paquete}</span>
+                                    <span className="text-[10px] text-slate-400">{it.fecha_scan}</span>
+                                </div>
+                                <div className="text-xs mt-1 text-slate-600">{it.modelo} - {it.partida}</div>
+                                <div className="text-[10px] bg-slate-100 inline-block px-1 rounded mt-1">Tejedor: {it.tejedor}</div>
+                                {canApprove && (
+                                    <div className="flex gap-2 mt-2 pt-2 border-t">
+                                        <button onClick={()=>action(it.id, 'ok')} className="flex-1 bg-green-100 text-green-800 text-xs font-bold py-1 rounded">APROBAR</button>
+                                        <button onClick={()=>action(it.id, 'del')} className="flex-1 bg-red-100 text-red-800 text-xs font-bold py-1 rounded">BORRAR</button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             );
         };
 
         const Root = () => {
             const [user, setUser] = useState(null);
-            return user ? <MainApp user={user} onLogout={() => setUser(null)}/> : <LoginScreen onLogin={setUser}/>;
+            return user ? <MainApp user={user} onLogout={()=>setUser(null)} /> : <LoginScreen onLogin={setUser} />;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
