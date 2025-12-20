@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CIRINEO NEXO v6.0</title>
+    <title>CIRINEO NEXO v5.1 - Máscara Pro</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -15,22 +15,58 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background: #020617; font-family: 'Inter', sans-serif; }
-        .glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
-        .glass-card { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .glass-card:active { transform: scale(0.92); background: rgba(255, 255, 255, 0.2); }
+        body { margin: 0; overflow: hidden; background: #0f172a; font-family: 'Segoe UI', sans-serif; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         
-        /* Scanner 6:1 con Visor Estrecho */
-        #reader { width: 100% !important; border: none !important; }
-        #reader video { object-fit: cover !important; height: 100px !important; }
-        .scan-window { height: 100px; border: 3px solid #0ea5e9; border-radius: 16px; overflow: hidden; position: relative; }
-        .scan-laser { position: absolute; width: 100%; height: 2px; background: #38bdf8; box-shadow: 0 0 15px #38bdf8; animation: laserMove 2s infinite; z-index: 10; }
-        @keyframes laserMove { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
+        /* CONTENEDOR DE CÁMARA TOTAL */
+        .scan-viewport {
+            position: relative;
+            width: 100%;
+            height: 350px; /* Altura generosa para ver la cámara */
+            background: black;
+            border-radius: 20px;
+            overflow: hidden;
+        }
 
-        /* Estilo de Iconos en Selección */
-        .icon-grid-item { @apply p-3 rounded-xl flex items-center justify-center cursor-pointer transition-all; border: 1px solid transparent; }
-        .icon-grid-item:hover { @apply bg-blue-500/20 border-blue-500/50; }
-        .icon-grid-item.selected { @apply bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-900/40; }
+        #reader { width: 100% !important; height: 100% !important; border: none !important; }
+        #reader video { object-fit: cover !important; height: 100% !important; }
+
+        /* CAPA DE RED (OSCURECIMIENTO CON HUECO 6:1) */
+        .scanner-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .focus-rect {
+            width: 90%;
+            aspect-ratio: 6/1;
+            border: 2px solid #3b82f6;
+            border-radius: 4px;
+            position: relative;
+            /* Truco de la sombra gigante para oscurecer el resto */
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.7);
+        }
+
+        .laser-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #f87171;
+            box-shadow: 0 0 10px #ef4444;
+            animation: scanAnim 2s infinite ease-in-out;
+        }
+
+        @keyframes scanAnim {
+            0%, 100% { top: 0%; opacity: 0.5; }
+            50% { top: 100%; opacity: 1; }
+        }
+
+        .user-theme-bg { background-size: cover; background-position: center; }
     </style>
 </head>
 <body>
@@ -39,7 +75,6 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // Firebase - Mantenemos tu config
         const firebaseConfig = {
             apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
             authDomain: "cirineo-cec21.firebaseapp.com",
@@ -51,12 +86,7 @@
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // BIBLIOTECA EXTENDIDA DE ICONOS
-        const ICON_LIBRARY = [
-            'camera', 'message-square', 'calculator', 'file-text', 'calendar', 'settings', 
-            'layers', 'package', 'user', 'shield', 'zap', 'star', 'heart', 'bell', 'cpu', 
-            'truck', 'activity', 'clipboard', 'database', 'image', 'map', 'tool', 'shopping-cart'
-        ];
+        const ICON_LIBRARY = ['user', 'settings', 'camera', 'layers', 'message-square', 'star', 'zap', 'shield', 'package', 'truck', 'activity'];
 
         const Icon = ({ name, size = 24, className }) => {
             const ref = useRef(null);
@@ -68,232 +98,142 @@
             return <span ref={ref} className="inline-block"></span>;
         };
 
-        // --- COMPONENTE: LOGIN ---
         const LoginScreen = ({ onLogin }) => {
             const [pin, setPin] = useState("");
             const handleLogin = async () => {
                 if (pin === '13524680') {
-                    onLogin({ name: "JVN93", pin: "13524680", role: "admin", icon: "shield", theme: "https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJpbmZqZ3R4Z3R4Z3R4Z3R4Z3R4Z3R4Z3R4Z3R4Z3R4Z/3o7TKMGpxxT1bXzJ5e/giphy.gif" });
+                    onLogin({ name: "JVN93", pin: "13524680", role: "admin", icon: "shield", theme: "https://images.unsplash.com/photo-1614850523296-d8c1af93d400" });
                     return;
                 }
                 const snap = await db.collection('users').doc(pin).get();
                 if (snap.exists) onLogin(snap.data());
-                else alert("Acceso Denegado.");
+                else alert("PIN incorrecto.");
             };
             return (
-                <div className="h-screen flex flex-col items-center justify-center p-6 bg-slate-950 text-white">
-                    <div className="mb-8 text-center">
-                        <div className="w-20 h-20 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center mb-4 shadow-2xl shadow-blue-900/50">
-                            <Icon name="cpu" size={40}/>
-                        </div>
-                        <h1 className="text-3xl font-black tracking-tighter">CIRINEO CORE</h1>
-                        <p className="text-slate-500 text-xs font-bold tracking-[0.2em]">SISTEMA CENTRALIZADO</p>
-                    </div>
-                    <input type="password" value={pin} onChange={e=>setPin(e.target.value)} className="bg-slate-900 text-center text-4xl w-64 p-5 rounded-3xl border border-slate-800 mb-6 shadow-inner" placeholder="••••"/>
-                    <button onClick={handleLogin} className="bg-blue-600 hover:bg-blue-500 w-64 py-5 rounded-3xl font-black transition-all shadow-xl shadow-blue-900/20">ACCEDER</button>
+                <div className="h-screen flex flex-col items-center justify-center p-6 bg-slate-900 text-white">
+                    <Icon name="cpu" size={64} className="mb-4 text-blue-500"/>
+                    <h1 className="text-2xl font-black mb-8 tracking-tighter text-center">CIRINEO NEXO<br/><span className="text-blue-500">PRODUCCIÓN</span></h1>
+                    <input type="password" value={pin} onChange={e=>setPin(e.target.value)} className="bg-slate-800 text-center text-4xl w-64 p-4 rounded-2xl border border-slate-700 mb-6 outline-none focus:border-blue-500" placeholder="PIN"/>
+                    <button onClick={handleLogin} className="bg-blue-600 w-64 py-4 rounded-2xl font-bold active:scale-95 transition-transform">ENTRAR</button>
                 </div>
             );
         };
 
-        // --- MÓDULO SCANNER 6:1 CON MULTI-SCAN ---
         const ScannerModule = ({ user }) => {
+            const [scannedList, setScannedList] = useState([]);
             const [isScanning, setIsScanning] = useState(false);
-            const [scans, setScans] = useState([]);
-            const lastData = useRef({ code: '', time: 0 });
+            const lastScanData = useRef({ code: '', time: 0 });
 
-            const onDetected = async (code) => {
+            const processScan = async (decodedText) => {
                 const now = Date.now();
-                const cleanCode = code.trim();
-
-                if (cleanCode === lastData.current.code && (now - lastData.current.time) < 3000) return;
+                const code = decodedText.trim();
+                if (code === lastScanData.current.code && (now - lastScanData.current.time) < 3000) return;
                 
-                if (cleanCode === lastData.current.code && (now - lastData.current.time) >= 3000) {
-                    alert(`DUPLICADO: ${cleanCode} ya registrado.`);
+                if (code === lastScanData.current.code && (now - lastScanData.current.time) >= 3000) {
+                    alert(`Papeleta repetida: ${code}`);
                 }
 
-                lastData.current = { code: cleanCode, time: now };
+                lastScanData.current = { code, time: now };
                 new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3').play();
 
-                const reg = { codigo_paquete: cleanCode, tejedor: user.name, fecha: firebase.firestore.FieldValue.serverTimestamp(), ts: now };
-                await db.collection('registro_produccion').add(reg);
-                setScans(prev => [reg, ...prev].slice(0, 5));
+                const record = {
+                    codigo_paquete: code,
+                    tejedor: user.name,
+                    fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                    timestamp_ms: now,
+                    dispositivo: "Nexo Scanner"
+                };
+
+                await db.collection('registro_produccion').add(record);
+                setScannedList(prev => [record, ...prev].slice(0, 5));
             };
 
             useEffect(() => {
                 let html5QrCode;
                 if (isScanning) {
                     html5QrCode = new Html5Qrcode("reader");
-                    html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: { width: 350, height: 70 } }, onDetected);
+                    html5QrCode.start(
+                        { facingMode: "environment" },
+                        { fps: 25, qrbox: { width: 320, height: 54 } },
+                        processScan
+                    );
                 }
-                return () => { if(html5QrCode) html5QrCode.stop(); };
+                return () => { if(html5QrCode) html5QrCode.stop().catch(() => {}); };
             }, [isScanning]);
 
             return (
-                <div className="space-y-6">
-                    <div className="scan-window">
+                <div className="space-y-4">
+                    <div className="scan-viewport">
                         <div id="reader"></div>
-                        <div className="scan-laser"></div>
-                    </div>
-                    <button onClick={() => setIsScanning(!isScanning)} className={`w-full py-5 rounded-3xl font-black text-white ${isScanning ? 'bg-red-500 shadow-red-900/20' : 'bg-sky-500 shadow-sky-900/20'} shadow-lg`}>
-                        {isScanning ? 'DETENER CÁMARA' : 'ACTIVAR LÁSER'}
-                    </button>
-                    <div className="space-y-2">
-                        {scans.map((s,i) => (
-                            <div key={i} className="flex justify-between glass-card p-4 rounded-2xl animate-fade-in">
-                                <span className="font-mono font-bold text-sky-400">{s.codigo_paquete}</span>
-                                <span className="text-[10px] text-slate-400 font-bold">{new Date(s.ts).toLocaleTimeString()}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        };
-
-        // --- PANEL ADMIN JVN93: DISEÑO Y CONFIGURACIÓN ---
-        const AdminPanel = ({ config, setConfig }) => {
-            const [users, setUsers] = useState([]);
-            const [edit, setEdit] = useState(null);
-
-            useEffect(() => {
-                const unsub = db.collection('users').onSnapshot(s => setUsers(s.docs.map(d => d.data())));
-                return () => unsub();
-            }, []);
-
-            const save = async (u) => {
-                await db.collection('users').doc(u.pin).set(u);
-                setEdit(null);
-            };
-
-            return (
-                <div className="space-y-6">
-                    <div className="glass-panel p-6 rounded-3xl">
-                        <h3 className="font-bold text-white mb-4 flex items-center gap-2"><Icon name="database" size={18}/> Repositorio GitHub</h3>
-                        <input value={config.repo || ''} onChange={e=>setConfig({...config, repo: e.target.value})} className="w-full bg-slate-900 p-3 rounded-2xl text-white border border-slate-800 text-sm" placeholder="https://raw.githubusercontent.com/..."/>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3">
-                        {users.map(u => (
-                            <div key={u.pin} onClick={() => setEdit(u)} className="glass-card p-4 rounded-3xl flex items-center justify-between cursor-pointer">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center text-blue-400 border border-slate-700">
-                                        <Icon name={u.icon || 'user'} />
-                                    </div>
-                                    <div>
-                                        <div className="text-white font-black">{u.name}</div>
-                                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{u.role} • PIN: {u.pin}</div>
-                                    </div>
-                                </div>
-                                <Icon name="chevron-right" className="text-slate-600"/>
-                            </div>
-                        ))}
-                    </div>
-
-                    {edit && (
-                        <div className="fixed inset-0 z-[300] bg-black/95 flex flex-col p-6 overflow-y-auto">
-                            <div className="max-w-md mx-auto w-full space-y-6">
-                                <div className="flex justify-between items-center">
-                                    <h2 className="text-white text-2xl font-black">Personalizar a {edit.name}</h2>
-                                    <button onClick={()=>setEdit(null)} className="p-2 bg-slate-800 rounded-full text-white"><Icon name="x"/></button>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-500 uppercase">Fondo de Pantalla (JPG/PNG/GIF)</label>
-                                    <input value={edit.theme} onChange={e=>setEdit({...edit, theme: e.target.value})} className="w-full bg-slate-800 p-4 rounded-2xl text-white outline-none border border-slate-700"/>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label className="text-xs font-black text-slate-500 uppercase">Icono del Menú Principal</label>
-                                    <div className="grid grid-cols-6 gap-2 bg-slate-900 p-4 rounded-3xl">
-                                        {ICON_LIBRARY.map(ico => (
-                                            <div key={ico} onClick={() => setEdit({...edit, icon: ico})} className={`icon-grid-item ${edit.icon === ico ? 'selected' : 'text-slate-500'}`}>
-                                                <Icon name={ico} size={20}/>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <button onClick={() => save(edit)} className="w-full bg-blue-600 py-5 rounded-3xl font-black text-white shadow-xl shadow-blue-900/30">GUARDAR CAMBIOS</button>
+                        <div className="scanner-overlay">
+                            <div className="focus-rect">
+                                <div className="laser-line"></div>
                             </div>
                         </div>
-                    )}
+                    </div>
+
+                    <button onClick={() => setIsScanning(!isScanning)} className={`w-full py-5 rounded-2xl font-black text-xl text-white ${isScanning ? 'bg-red-500 shadow-lg shadow-red-900/40' : 'bg-blue-600 shadow-lg shadow-blue-900/40'}`}>
+                        {isScanning ? 'DETENER LÁSER' : 'INICIAR CÁMARA'}
+                    </button>
+
+                    <div className="bg-black/40 rounded-2xl p-4 h-40 overflow-y-auto border border-white/5">
+                        <h4 className="text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">Últimos Registros</h4>
+                        {scannedList.map((s, i) => (
+                            <div key={i} className="flex justify-between items-center py-2 border-b border-white/5 animate-pulse">
+                                <span className="text-blue-400 font-mono text-sm font-bold">{s.codigo_paquete}</span>
+                                <span className="text-[10px] text-slate-500">{new Date(s.timestamp_ms).toLocaleTimeString()}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             );
         };
 
-        // --- APP PRINCIPAL ---
         const App = () => {
             const [user, setUser] = useState(null);
-            const [config, setConfig] = useState({ repo: '' });
-            const [activeModal, setActiveModal] = useState(null);
-
-            useEffect(() => {
-                db.collection('settings').doc('global').onSnapshot(d => d.exists && setConfig(d.data()));
-            }, []);
+            const [modal, setModal] = useState(null);
 
             if (!user) return <LoginScreen onLogin={setUser} />;
 
             return (
-                <div className="h-screen w-screen relative overflow-hidden flex flex-col" style={{ backgroundColor: '#020617' }}>
-                    {/* FONDO DINÁMICO */}
-                    <div className="absolute inset-0 z-0 opacity-40 grayscale" style={{ backgroundImage: `url(${user.theme})`, backgroundSize: 'cover', backgroundPosition: 'center' }}></div>
-                    <div className="absolute inset-0 z-1 bg-gradient-to-b from-slate-950/80 via-slate-950/40 to-slate-950"></div>
-
-                    {/* DOCK SUPERIOR */}
-                    <div className="z-10 p-6 flex justify-between items-center">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 glass-panel rounded-2xl text-blue-400 border-blue-500/30">
-                                <Icon name={user.icon || 'user'} size={28}/>
+                <div className="h-screen w-screen user-theme-bg overflow-hidden flex flex-col" style={{ backgroundImage: `linear-gradient(rgba(15,23,42,0.85), rgba(15,23,42,0.85)), url(${user.theme})` }}>
+                    <div className="p-4 flex justify-between items-center glass border-b border-white/10">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                                <Icon name={user.icon || 'user'} />
                             </div>
-                            <div>
-                                <h2 className="text-white font-black text-xl tracking-tighter">{user.name}</h2>
-                                <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">{user.role}</span>
-                            </div>
+                            <span className="text-white font-bold">{user.name}</span>
                         </div>
-                        <button onClick={() => setUser(null)} className="p-3 glass-panel rounded-2xl text-red-400 border-red-500/30"><Icon name="log-out"/></button>
+                        <button onClick={() => setUser(null)} className="p-2 text-red-400 bg-red-400/10 rounded-lg"><Icon name="log-out" size={20}/></button>
                     </div>
 
-                    {/* GRILLA DE WIDGETS (WIDGETS PERSONALIZADOS) */}
-                    <div className="z-10 flex-1 p-6 grid grid-cols-2 gap-4 content-start">
-                        <Widget label="Escáner" icon="camera" onClick={() => setActiveModal('scanner')} />
-                        <Widget label="Chat Grupal" icon="message-square" onClick={() => setActiveModal('chat')} />
-                        <Widget label="Calculadora" icon="calculator" onClick={() => setActiveModal('calc')} />
-                        <Widget label="Notas" icon="file-text" onClick={() => setActiveModal('notes')} />
-                        <Widget label="Calendario" icon="calendar" onClick={() => setActiveModal('calendar')} />
-                        
-                        {user.pin === '13524680' && (
-                            <Widget label="Diseño JVN93" icon="settings" onClick={() => setActiveModal('admin')} color="text-yellow-400" />
-                        )}
+                    <div className="flex-1 p-6 grid grid-cols-2 gap-4 content-start">
+                        <MenuBtn label="Escáner" icon="camera" color="bg-blue-500" onClick={() => setModal('scanner')} />
+                        <MenuBtn label="Mensajes" icon="message-square" color="bg-green-500" />
+                        <MenuBtn label="Cálculo" icon="cpu" color="bg-purple-500" />
+                        <MenuBtn label="Reportes" icon="layers" color="bg-amber-500" />
                     </div>
 
-                    {/* MODALES DINÁMICOS */}
-                    {activeModal && (
-                        <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col p-6 animate-fade-in overflow-hidden">
-                            <div className="flex justify-between items-center mb-8">
-                                <h2 className="text-white text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
-                                    <Icon name={activeModal === 'scanner' ? 'camera' : (activeModal === 'admin' ? 'settings' : 'layers')}/>
-                                    {activeModal}
-                                </h2>
-                                <button onClick={() => setActiveModal(null)} className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-white border border-white/10"><Icon name="x"/></button>
+                    {modal === 'scanner' && (
+                        <div className="fixed inset-0 z-50 bg-slate-950 flex flex-col p-4 animate-in slide-in-from-bottom duration-300">
+                            <div className="flex justify-between items-center mb-4 text-white">
+                                <h2 className="font-black uppercase tracking-widest text-blue-500">MODO LÁSER</h2>
+                                <button onClick={()=>setModal(null)} className="p-3 bg-white/5 rounded-2xl border border-white/10"><Icon name="x"/></button>
                             </div>
-                            <div className="flex-1 overflow-y-auto">
-                                {activeModal === 'scanner' && <ScannerModule user={user} />}
-                                {activeModal === 'admin' && <AdminPanel config={config} setConfig={(c) => { setConfig(c); db.collection('settings').doc('global').set(c); }} />}
-                                {activeModal === 'calc' && <div className="text-white text-center py-20 font-bold opacity-30 italic">Calculadora en desarrollo...</div>}
-                                {activeModal === 'chat' && <div className="text-white text-center py-20 font-bold opacity-30 italic">Cargando servidor de Chat...</div>}
-                            </div>
+                            <ScannerModule user={user} />
                         </div>
                     )}
                 </div>
             );
         };
 
-        const Widget = ({ label, icon, onClick, color = "text-white" }) => (
-            <div onClick={onClick} className="glass-card p-6 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 cursor-pointer">
-                <div className={`${color} opacity-90`}>
-                    <Icon name={icon} size={40}/>
+        const MenuBtn = ({ label, icon, color, onClick }) => (
+            <button onClick={onClick} className="flex flex-col items-center gap-3 p-6 glass rounded-[2.5rem] active:scale-90 transition-all border border-white/5 shadow-xl">
+                <div className={`${color} p-4 rounded-2xl shadow-lg`}>
+                    <Icon name={icon} size={32} className="text-white" />
                 </div>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 text-center">{label}</span>
-            </div>
+                <span className="text-white text-[10px] font-black uppercase tracking-widest opacity-60">{label}</span>
+            </button>
         );
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
