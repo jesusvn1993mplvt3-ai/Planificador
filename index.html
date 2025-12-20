@@ -3,8 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Scanner Lite G6 - Cirineo (Edición Balta)</title>
     
+    <title>Balta Escanear</title>
+    <meta name="apple-mobile-web-app-title" content="Balta Escanear">
+    <meta name="application-name" content="Balta Escanear">
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png">
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png">
+    
+    <link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIkJYWHRhIEVzY2FuZWFyIiwKICAic2hvcnRfbmFtZSI6ICJCYWx0YVNjYW4iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzAyMDYxNyIsCiAgInRoZW1lX2NvbG9yIjogIiMwMjA2MTciLAogICJpY29ucyI6IFt7CiAgICAic3JjIjogImh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9qZXN1c3ZuMTk5M21wbHZ0My1haS9QbGFuaWZpY2Fkb3IvcmVmcy9oZWFkcy9tYWluL0JYWHRhLnBuZyIsCiAgICAic2l6ZXMiOiAiMTkyeDE5MiA1MTJ4NTEyIiwKICAgICJ0eXBlIjogImltYWdlL3BuZyIKICB9XQp9">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -15,46 +26,46 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
-        /* ESTILOS DEL DISEÑO CIRINEO NEXO (Referencia) */
-        body { margin: 0; background: #020617; font-family: 'Inter', sans-serif; overflow: hidden; color: white; }
-        
+        body { margin: 0; background: #020617; font-family: 'Inter', sans-serif; overflow: hidden; color: white; overscroll-behavior: none; }
         .glass-panel { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.1); }
         .glass-card { background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .glass-card:active { transform: scale(0.98); background: rgba(255, 255, 255, 0.15); }
         
-        /* Scanner Estilo Laser 6:1 */
+        /* HEADER FIJO & LUZ ROJA */
+        .fixed-header-container {
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 100;
+            background: rgba(2, 6, 23, 0.85); backdrop-filter: blur(12px);
+            padding: 15px 0; display: flex; justify-content: center;
+            border-bottom: 1px solid rgba(255, 0, 0, 0.15);
+        }
+        .header-logo-img { height: 50px; width: auto; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,0,0,0.3)); }
+        
+        .red-light-scanner {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 3px;
+            background: linear-gradient(90deg, transparent 0%, #ff0000 50%, transparent 100%);
+            box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.7);
+            animation: scanMove 2.5s infinite linear;
+        }
+        @keyframes scanMove { 0% { transform: translateX(-100%); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateX(100%); opacity: 0; } }
+
+        .main-content-padded { padding-top: 90px !important; }
+
+        /* SCANNER */
         #reader { width: 100% !important; border: none !important; height: 100% !important; }
         #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; border-radius: 12px; }
         
         .scan-window { 
-            height: 150px; /* Un poco más alto para facilitar el encuadre */
-            width: 100%;
-            border: 2px solid #0ea5e9; 
-            border-radius: 16px; 
-            overflow: hidden; 
-            position: relative; 
-            background: #000;
+            height: 150px; width: 100%; border: 2px solid #0ea5e9; border-radius: 16px; 
+            overflow: hidden; position: relative; background: #000;
             box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
         }
-        
         .scan-laser { 
-            position: absolute; 
-            width: 100%; 
-            height: 2px; 
-            background: #38bdf8; 
+            position: absolute; width: 100%; height: 2px; background: #38bdf8; 
             box-shadow: 0 0 15px #38bdf8, 0 0 30px #0ea5e9; 
-            animation: laserMove 2s infinite linear; 
-            z-index: 10; 
-            top: 0;
+            animation: laserMove 2s infinite linear; z-index: 10; top: 0;
         }
-        
-        @keyframes laserMove { 
-            0% { top: 0%; opacity: 0.8; } 
-            50% { top: 100%; opacity: 1; } 
-            100% { top: 0%; opacity: 0.8; } 
-        }
+        @keyframes laserMove { 0% { top: 0%; opacity: 0.8; } 50% { top: 100%; opacity: 1; } 100% { top: 0%; opacity: 0.8; } }
 
-        /* Utilidades */
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -83,7 +94,7 @@
                 if (ref.current && lucide.icons[name]) {
                     ref.current.innerHTML = lucide.icons[name].toSvg({ width: size, height: size, class: className });
                 }
-            }, [name, className]);
+            }, [name, className, size]);
             return <span ref={ref} onClick={onClick} className={`inline-flex items-center justify-center ${onClick ? 'cursor-pointer' : ''}`}></span>;
         };
 
@@ -92,17 +103,15 @@
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
-                osc.type = 'sine'; 
-                osc.frequency.setValueAtTime(1200, ctx.currentTime);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(1200, ctx.currentTime);
                 osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.15);
                 gain.gain.setValueAtTime(0.1, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-                osc.connect(gain); gain.connect(ctx.destination); 
-                osc.start(); osc.stop(ctx.currentTime + 0.15);
+                osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.15);
             } catch(e) {}
         };
 
-        // --- COMPONENTE MODAL DEL ESCÁNER (ESTILO NEXO) ---
+        // --- MODAL ESCÁNER ---
         const QuickScannerModal = ({ isVisible, onClose, ordersCache, onScanSaved }) => {
             const [scans, setScans] = useState([]); 
             const [isSaving, setIsSaving] = useState(false);
@@ -111,45 +120,23 @@
             const lastCodeRef = useRef({ code: '', time: 0 });
 
             useEffect(() => {
-                if (isVisible) {
-                    setScans([]);
-                    startScanner();
-                } else {
-                    stopScanner();
-                }
+                if (isVisible) { setScans([]); startScanner(); } 
+                else { stopScanner(); }
                 return () => stopScanner();
             }, [isVisible]);
 
             const startScanner = async () => {
                 try {
-                    // Usamos Html5Qrcode directo para controlar el DOM como en el index.html
                     const html5QrCode = new Html5Qrcode("reader");
                     html5QrCodeRef.current = html5QrCode;
-
-                    const config = { 
-                        fps: 15, 
-                        qrbox: { width: 300, height: 100 }, // Área de lectura rectangular
-                        aspectRatio: 1.0 
-                    };
-
-                    await html5QrCode.start(
-                        { facingMode: "environment" }, 
-                        config, 
-                        (decodedText) => handleQuickScan(decodedText),
-                        (errorMessage) => { /* ignorar errores de frame vacío */ }
-                    );
-                } catch (err) {
-                    console.error("Error cámara", err);
-                    setStatus("Error al iniciar cámara");
-                }
+                    await html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 300, height: 100 }, aspectRatio: 1.0 }, 
+                        (decodedText) => handleQuickScan(decodedText), () => {});
+                } catch (err) { setStatus("Error al iniciar cámara"); }
             };
 
             const stopScanner = async () => {
                 if (html5QrCodeRef.current) {
-                    try {
-                        await html5QrCodeRef.current.stop();
-                        html5QrCodeRef.current.clear();
-                    } catch(e) {}
+                    try { await html5QrCodeRef.current.stop(); html5QrCodeRef.current.clear(); } catch(e) {}
                     html5QrCodeRef.current = null;
                 }
             };
@@ -157,33 +144,19 @@
             const handleQuickScan = (rawCode) => {
                 const now = Date.now();
                 const cleanCode = rawCode.trim().toUpperCase().replace(/'/g, '-').replace(/\?/g, '_');
-
-                // Evitar lecturas dobles muy rápidas (menos de 2 segs el mismo código)
                 if (cleanCode === lastCodeRef.current.code && (now - lastCodeRef.current.time) < 2000) return;
                 lastCodeRef.current = { code: cleanCode, time: now };
 
-                // Validar si ya está en la lista actual
-                if (scans.some(s => s.code === cleanCode)) {
-                    setStatus(`¡${cleanCode} YA ESTÁ EN LA LISTA!`);
-                    return;
-                }
+                if (scans.some(s => s.code === cleanCode)) { setStatus(`¡${cleanCode} YA REGISTRADO!`); return; }
 
-                // Buscar en caché de órdenes
                 let foundPackage = null;
                 for (const order of ordersCache) {
                     if (order.progreso) {
                         const pkg = order.progreso.find(p => p.codigoUnico === cleanCode);
                         if (pkg) {
                             foundPackage = { 
-                                code: cleanCode, 
-                                orderId: order.id, 
-                                modelo: order.codigo, 
-                                partida: order.partida,
-                                piezaNombre: pkg.piezaNombre,
-                                paquete_indice: pkg.paqueteNum, 
-                                paquete_total: pkg.paquetesDePieza, 
-                                piezas_en_paquete: pkg.cantidad,
-                                // *** AQUÍ ESTÁ EL CAMBIO SOLICITADO: ***
+                                code: cleanCode, orderId: order.id, modelo: order.codigo, partida: order.partida,
+                                paquete_indice: pkg.paqueteNum, paquete_total: pkg.paquetesDePieza, piezas_en_paquete: pkg.cantidad,
                                 tejedor: "Balta" 
                             };
                             break;
@@ -195,130 +168,80 @@
                     playBeep();
                     setScans(prev => [foundPackage, ...prev]);
                     setStatus(`Leído: ${foundPackage.modelo} #${foundPackage.paquete_indice}`);
-                } else {
-                    setStatus(`Código ${cleanCode} NO ENCONTRADO`);
-                }
+                } else { setStatus(`Código ${cleanCode} NO ENCONTRADO`); }
             };
 
             const confirmScans = async () => {
                 if (scans.length === 0 || isSaving) return;
                 setIsSaving(true);
-                
                 const batch = db.batch();
                 let savedCount = 0;
-
                 for (const scan of scans) {
-                    // Verificación básica de duplicado en DB antes de subir (opcional, pero recomendada)
-                    // Para rapidez en UI, asumimos éxito y el backend/reglas manejarán consistencia,
-                    // pero mantenemos la lógica original de crear documentos.
                     const docRef = db.collection('registro_produccion').doc();
                     batch.set(docRef, {
-                        codigo_paquete: scan.code, 
-                        orderId: String(scan.orderId), 
-                        fecha: FieldValue.serverTimestamp(),
+                        codigo_paquete: scan.code, orderId: String(scan.orderId), fecha: FieldValue.serverTimestamp(),
                         fecha_legible: new Date().toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(/\//g, '/'), 
-                        tejedor: scan.tejedor, // Guardará "Balta"
-                        tipo: "produccion",
-                        modelo: scan.modelo,
-                        partida: scan.partida,
-                        paquete_indice: scan.paquete_indice, 
-                        paquete_total: scan.paquete_total,
-                        piezas_en_paquete: scan.piezas_en_paquete
+                        tejedor: scan.tejedor, tipo: "produccion", modelo: scan.modelo, partida: scan.partida,
+                        paquete_indice: scan.paquete_indice, paquete_total: scan.paquete_total, piezas_en_paquete: scan.piezas_en_paquete
                     });
                     savedCount++;
                 }
-
                 await batch.commit();
                 setIsSaving(false);
                 onScanSaved(savedCount);
                 onClose();
             };
 
-            const removeScan = (code) => {
-                setScans(prev => prev.filter(s => s.code !== code));
-            };
+            const removeScan = (code) => setScans(prev => prev.filter(s => s.code !== code));
 
             if (!isVisible) return null;
 
             return (
-                <div className="fixed inset-0 z-50 bg-[#020617] flex flex-col p-6 animate-fade-in">
-                    {/* Header */}
+                <div className="fixed inset-0 z-[200] bg-[#020617] flex flex-col p-6 animate-fade-in">
+                    {/* Header del Modal */}
                     <div className="flex justify-between items-center mb-6">
                         <div>
                             <h2 className="text-white text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
-                                <Icon name="camera" className="text-blue-500"/>
-                                ESCÁNER G6
+                                <Icon name="camera" className="text-blue-500"/> BARCODE SCANNER
                             </h2>
                             <p className="text-slate-500 text-xs font-bold tracking-[0.2em] uppercase">USUARIO: BALTA</p>
                         </div>
-                        <button onClick={onClose} className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-white border border-white/10 hover:bg-white/10">
-                            <Icon name="x"/>
+                        
+                        {/* BOTÓN CERRAR CON X CLARA */}
+                        <button onClick={onClose} className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center text-white border border-red-500/30 hover:bg-red-500/20 active:scale-95 transition-all">
+                            <Icon name="x" size={32} className="text-white drop-shadow-lg"/>
                         </button>
                     </div>
 
-                    {/* Área de Cámara Estilo Index */}
-                    <div className="scan-window mb-4 shadow-2xl shadow-blue-900/20">
-                        <div id="reader"></div>
-                        <div className="scan-laser"></div>
-                    </div>
+                    <div className="scan-window mb-4 shadow-2xl shadow-blue-900/20"><div id="reader"></div><div className="scan-laser"></div></div>
+                    <div className="text-center mb-4"><span className={`text-xs font-bold px-3 py-1 rounded-full ${status.includes('NO') ? 'bg-red-900/50 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>{status}</span></div>
                     
-                    {/* Status Bar */}
-                    <div className="text-center mb-4">
-                         <span className={`text-xs font-bold px-3 py-1 rounded-full ${status.includes('NO') ? 'bg-red-900/50 text-red-400' : 'bg-blue-900/30 text-blue-400'}`}>
-                            {status}
-                        </span>
-                    </div>
-
-                    {/* Lista de Escaneos */}
                     <div className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
                         {scans.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-700 opacity-50">
-                                <Icon name="qr-code" size={48} className="mb-2"/>
-                                <span className="text-sm font-bold uppercase tracking-widest">Esperando códigos...</span>
-                            </div>
+                            <div className="h-full flex flex-col items-center justify-center text-slate-700 opacity-50"><Icon name="qr-code" size={48} className="mb-2"/><span className="text-sm font-bold uppercase tracking-widest">Esperando códigos...</span></div>
                         ) : (
-                            scans.map((s, i) => (
+                            scans.map((s) => (
                                 <div key={s.code} className="glass-card p-4 rounded-2xl flex justify-between items-center animate-fade-in group">
-                                    <div>
-                                        <div className="font-mono font-bold text-sky-400 text-lg">{s.code}</div>
-                                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">
-                                            {s.modelo} • Pqt {s.paquete_indice}/{s.paquete_total}
-                                        </div>
-                                    </div>
-                                    <button onClick={() => removeScan(s.code)} className="text-slate-600 hover:text-red-400 transition-colors">
-                                        <Icon name="trash-2" size={18}/>
-                                    </button>
+                                    <div><div className="font-mono font-bold text-sky-400 text-lg">{s.code}</div><div className="text-[10px] text-slate-400 font-bold uppercase tracking-wide">{s.modelo} • Pqt {s.paquete_indice}/{s.paquete_total}</div></div>
+                                    <button onClick={() => removeScan(s.code)} className="text-slate-600 hover:text-red-400 transition-colors"><Icon name="trash-2" size={18}/></button>
                                 </div>
                             ))
                         )}
                     </div>
-
-                    {/* Botón de Acción */}
-                    <button 
-                        onClick={confirmScans}
-                        disabled={scans.length === 0 || isSaving}
-                        className={`w-full py-5 rounded-3xl font-black text-white shadow-xl transition-all
-                            ${scans.length > 0 && !isSaving 
-                                ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/40' 
-                                : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}
-                    >
-                        {isSaving ? 'GUARDANDO...' : `CONFIRMAR (${scans.length})`}
-                    </button>
+                    <button onClick={confirmScans} disabled={scans.length === 0 || isSaving} className={`w-full py-5 rounded-3xl font-black text-white shadow-xl transition-all ${scans.length > 0 && !isSaving ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/40' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}>{isSaving ? 'GUARDANDO...' : `CONFIRMAR (${scans.length})`}</button>
                 </div>
             );
         };
 
-        // --- COMPONENTE PRINCIPAL (DASHBOARD) ---
+        // --- DASHBOARD PRINCIPAL ---
         const ScannerG6 = () => {
             const [ordersCache, setOrdersCache] = useState([]);
-            const [statusMsg, setStatusMsg] = useState("Cargando base de datos...");
+            const [statusMsg, setStatusMsg] = useState("Cargando...");
             const [showScanner, setShowScanner] = useState(false);
             const [lastSaveCount, setLastSaveCount] = useState(0);
 
             useEffect(() => {
-                const unsubscribe = db.collection('orders')
-                    .where('status', '!=', 'ARCHIVADO')
-                    .onSnapshot(snapshot => {
+                const unsubscribe = db.collection('orders').where('status', '!=', 'ARCHIVADO').onSnapshot(snapshot => {
                         const loadedOrders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                         setOrdersCache(loadedOrders);
                         setStatusMsg(`${loadedOrders.length} Órdenes Activas`);
@@ -327,47 +250,32 @@
             }, []);
 
             return (
-                <div className="h-screen w-screen bg-[#020617] text-white flex flex-col p-6 overflow-hidden relative">
-                    {/* Fondo decorativo */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-slate-950 to-slate-950 pointer-events-none"></div>
+                <div className="h-screen w-screen bg-[#020617] text-white flex flex-col overflow-hidden relative">
+                    <div className="fixed-header-container">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/CJNG_Logo.svg/1024px-CJNG_Logo.svg.png" alt="Logo" className="header-logo-img" />
+                        <div className="red-light-scanner"></div>
+                    </div>
 
-                    <div className="z-10 flex-1 flex flex-col justify-center items-center gap-8">
-                        
+                    <div className="z-10 flex-1 flex flex-col justify-center items-center gap-8 main-content-padded p-6">
                         <div className="text-center space-y-2">
-                            <div className="w-20 h-20 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center mb-6 shadow-2xl shadow-blue-900/50">
-                                <Icon name="scan-barcode" size={40} className="text-white"/>
-                            </div>
-                            <h1 className="text-3xl font-black tracking-tighter">SCANNER LITE</h1>
+                            <img src="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png" alt="Balta" className="w-28 h-28 rounded-full mx-auto mb-6 shadow-2xl shadow-red-900/40 border-2 border-red-500/20 object-cover relative z-10" />
+                            <h1 className="text-3xl font-black tracking-tighter">BARCODE SCANNER</h1>
                             <p className="text-slate-500 text-xs font-bold tracking-[0.2em] uppercase">Edición Especial Balta</p>
                         </div>
 
-                        {/* Botón Principal */}
-                        <div onClick={() => setShowScanner(true)} className="glass-card w-full max-w-xs p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-white/10 active:scale-95 transition-all group">
-                            <div className="text-sky-400 group-hover:text-white transition-colors drop-shadow-[0_0_15px_rgba(56,189,248,0.5)]">
-                                <Icon name="camera" size={64}/>
-                            </div>
-                            <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-300">Iniciar Escáner</span>
+                        <div onClick={() => setShowScanner(true)} className="glass-card w-full max-w-xs p-8 rounded-[2.5rem] flex flex-col items-center justify-center gap-6 cursor-pointer hover:bg-white/10 active:scale-95 transition-all group relative overflow-hidden">
+                             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="text-sky-400 group-hover:text-white transition-colors drop-shadow-[0_0_15px_rgba(56,189,248,0.5)] relative z-10"><Icon name="camera" size={64}/></div>
+                            <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-300 relative z-10">Iniciar Escáner</span>
                         </div>
 
-                        {/* Info Footer */}
-                        <div className="mt-8 flex flex-col gap-2 items-center">
-                            <span className="px-4 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                {statusMsg}
-                            </span>
-                            {lastSaveCount > 0 && (
-                                <span className="text-green-400 text-xs font-bold animate-pulse">
-                                    ✓ Último lote: {lastSaveCount} paquetes
-                                </span>
-                            )}
+                        <div className="mt-4 flex flex-col gap-2 items-center">
+                            <span className="px-4 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><Icon name="database" size={12}/> {statusMsg}</span>
+                            {lastSaveCount > 0 && (<span className="text-green-400 text-xs font-bold animate-pulse">✓ Último lote: {lastSaveCount} paquetes</span>)}
                         </div>
                     </div>
 
-                    <QuickScannerModal 
-                        isVisible={showScanner} 
-                        onClose={() => setShowScanner(false)}
-                        ordersCache={ordersCache}
-                        onScanSaved={setLastSaveCount}
-                    />
+                    <QuickScannerModal isVisible={showScanner} onClose={() => setShowScanner(false)} ordersCache={ordersCache} onScanSaved={setLastSaveCount} />
                 </div>
             );
         };
