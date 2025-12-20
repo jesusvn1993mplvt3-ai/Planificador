@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cirineo Ultimate System</title>
+    <title>Cirineo Ultimate System v2</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -17,74 +17,72 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
-        /* Estilos Base y Animaciones */
-        body { overflow: hidden; overscroll-behavior: none; }
+        /* Estilos Base */
+        body { overflow: hidden; overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
         
-        /* Animaciones generales */
+        /* Animaciones */
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes pulse-border { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); } }
-        
         .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
 
+        /* --- TEMAS (Themes) --- */
+
         /* TEMA: TERMINAL (JVN93) */
         .theme-terminal { background-color: #0c0c0c; color: #00ff00; font-family: 'Courier New', monospace; }
-        .theme-terminal .btn { border: 1px solid #00ff00; border-radius: 0; background: #001100; text-transform: uppercase; }
-        .theme-terminal .btn:active { background: #00ff00; color: black; }
-        .theme-terminal .card { border: 1px solid #333; background: #111; border-left: 4px solid #00ff00; }
+        .theme-terminal .btn { border: 1px solid #00ff00; background: #001100; text-transform: uppercase; border-radius: 0; }
+        .theme-terminal .btn-scan { border: 2px dashed #00ff00; }
+        .theme-terminal .top-bar { border-bottom: 1px solid #00ff00; }
 
         /* TEMA: KOF (BALTA) */
-        .theme-kof { background: linear-gradient(135deg, #1a1a1a 0%, #4a0e0e 100%); color: white; font-family: 'Impact', sans-serif; }
-        .theme-kof .btn { background: linear-gradient(to bottom, #ff0000, #990000); border: 2px solid #ffcc00; transform: skewX(-10deg); text-shadow: 1px 1px 0 #000; box-shadow: 3px 3px 0 #000; }
+        .theme-kof { background: linear-gradient(135deg, #1a1a1a 0%, #4a0e0e 100%); color: white; font-family: 'Impact', sans-serif; letter-spacing: 1px; }
+        .theme-kof .btn { background: linear-gradient(to bottom, #b91c1c, #7f1d1d); border: 2px solid #fcd34d; transform: skewX(-10deg); box-shadow: 3px 3px 0 #000; text-shadow: 1px 1px 0 #000; }
         .theme-kof .btn:active { transform: skewX(-10deg) translateY(2px); box-shadow: 1px 1px 0 #000; }
-        .theme-kof .card { background: rgba(0,0,0,0.8); border: 2px solid #ff0000; transform: skewX(-5deg); }
+        .theme-kof .btn-scan { background: linear-gradient(to bottom, #d97706, #b45309); border-color: white; }
 
         /* TEMA: MARIO (JOEL) */
-        .theme-mario { background-color: #6b8cff; font-family: 'Arial Rounded MT Bold', sans-serif; background-image: radial-gradient(white 15%, transparent 16%), radial-gradient(white 15%, transparent 16%); background-size: 60px 60px; background-position: 0 0, 30px 30px; }
-        .theme-mario .btn { background: #ff3333; border: 4px solid white; border-radius: 20px; box-shadow: 0 4px 0 #cc0000; color: white; text-transform: uppercase; letter-spacing: 1px; }
-        .theme-mario .btn:active { transform: translateY(4px); box-shadow: none; }
-        .theme-mario .card { background: white; border-radius: 15px; border: 4px solid #ffcc00; color: #333; }
+        .theme-mario { background-color: #6b8cff; font-family: 'Arial Rounded MT Bold', 'Verdana', sans-serif; background-image: radial-gradient(#ffffff 15%, transparent 16%), radial-gradient(#ffffff 15%, transparent 16%); background-size: 60px 60px; background-position: 0 0, 30px 30px; }
+        .theme-mario .btn { background: #ef4444; border: 4px solid white; border-radius: 16px; box-shadow: 0 4px 0 #991b1b; color: white; text-transform: uppercase; }
+        .theme-mario .btn:active { transform: translateY(4px); box-shadow: 0 0 0 #991b1b; }
+        .theme-mario .btn-scan { background: #22c55e; box-shadow: 0 4px 0 #15803d; }
 
         /* TEMA: PIKACHU (SUSAN) */
-        .theme-pokemon { background-color: #ffcc00; color: #333; font-family: 'Verdana', sans-serif; }
-        .theme-pokemon .btn { background: white; border: 4px solid #333; border-radius: 50%; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-        .theme-pokemon .btn::after { content: ''; position: absolute; width: 100%; height: 50%; background: #ff0000; top: 0; left: 0; border-bottom: 2px solid #333; }
-        .theme-pokemon .btn-text { background: #3b4cca; color: white; border: 2px solid #ffcc00; border-radius: 8px; padding: 10px; font-weight: bold; width: 100%; text-align: center; }
-        .theme-pokemon .card { background: #f0f0f0; border: 3px solid #3b4cca; border-radius: 10px; box-shadow: 5px 5px 0 rgba(0,0,0,0.2); }
+        .theme-pokemon { background-color: #facc15; color: #333; font-family: 'Verdana', sans-serif; }
+        .theme-pokemon .btn { background: white; border: 4px solid #1e293b; border-radius: 12px; color: #1e293b; font-weight: bold; }
+        .theme-pokemon .btn-scan { background: #ef4444; color: white; border-radius: 50%; width: 180px; height: 180px; border-width: 8px; position: relative; overflow: hidden; }
+        .theme-pokemon .btn-scan::after { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 4px; background: #1e293b; transform: translateY(-50%); }
+        .theme-pokemon .btn-scan::before { content: ""; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: white; border: 6px solid #1e293b; border-radius: 50%; z-index: 2; }
 
         /* TEMA: IOS PRO (MARCO) */
         .theme-ios { background-color: #f2f2f7; color: #1c1c1e; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-        .theme-ios .btn { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 14px; color: #007aff; font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .theme-ios .btn-primary { background: #007aff; color: white; }
-        .theme-ios .card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: none; }
-        
-        /* Camera View */
-        #reader { width: 100%; height: 100%; object-fit: cover; }
-        video { object-fit: cover !important; border-radius: 12px; }
+        .theme-ios .btn { background: rgba(255,255,255,0.8); backdrop-filter: blur(20px); border-radius: 14px; color: #007aff; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .theme-ios .btn-scan { background: #007aff; color: white; border-radius: 50%; box-shadow: 0 8px 20px rgba(0,122,255,0.3); }
+
+        /* Cámara y Video */
+        #reader { width: 100%; height: 100%; object-fit: cover; background: black; }
+        video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
+        const { useState, useEffect, useRef } = React;
         const { jsPDF } = window.jspdf;
 
-        // --- FIREBASE INIT ---
+        // --- FIREBASE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
             authDomain: "cirineo-cec21.firebaseapp.com",
             projectId: "cirineo-cec21",
             storageBucket: "cirineo-cec21.firebasestorage.app",
             messagingSenderId: "620210618284",
-            appId: "1:620210618284:web:482bab9bf74650fff18409",
-            measurementId: "G-B7YLM78RVW"
+            appId: "1:620210618284:web:482bab9bf74650fff18409"
         };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- USUARIOS BASE (Se registran si no existen) ---
+        // --- LISTA DE USUARIOS (HARDCODED PARA RECUPERACIÓN) ---
         const INITIAL_USERS = [
             { pin: "13524680", name: "JVN93", role: "admin", theme: "terminal", permissions: ["all"] },
             { pin: "4895", name: "BALTA", role: "scanner", theme: "kof", permissions: ["scan"] },
@@ -93,8 +91,8 @@
             { pin: "0000", name: "MARCO ESPINOZA", role: "pro", theme: "ios", permissions: ["scan", "view", "approve", "shortcuts"], shortcuts: [{name: "Reporte Diario", url: "https://google.com"}, {name: "Inventario", url: "https://google.com"}] }
         ];
 
-        // --- COMPONENTES AUXILIARES ---
-        const Icon = ({ name, size = 20, className, onClick }) => {
+        // --- ICONOS ---
+        const Icon = ({ name, size = 24, className, onClick }) => {
             const ref = useRef(null);
             useEffect(() => {
                 if (ref.current && lucide.icons[name]) {
@@ -104,59 +102,108 @@
             return <span ref={ref} onClick={onClick} className={onClick ? "cursor-pointer" : ""}></span>;
         };
 
-        // --- SONIDOS (Simulados con Web Audio API para no depender de URLs externas) ---
+        // --- SONIDOS ---
         const playSound = (type, theme) => {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain);
             gain.connect(ctx.destination);
-
             const now = ctx.currentTime;
-            
+
             if (theme === 'pokemon') {
-                // Tono agudo tipo "Pika!"
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(800, now);
-                osc.frequency.exponentialRampToValueAtTime(1500, now + 0.1);
-                gain.gain.setValueAtTime(0.5, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.start(now); osc.stop(now + 0.2);
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(800, now); osc.frequency.exponentialRampToValueAtTime(1500, now+0.1);
+                gain.gain.setValueAtTime(0.5, now); gain.gain.exponentialRampToValueAtTime(0.01, now+0.2);
+                osc.start(now); osc.stop(now+0.2);
             } else if (theme === 'mario') {
-                // Tono moneda
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(988, now); // B5
-                setTimeout(() => {
-                    const osc2 = ctx.createOscillator(); const g2 = ctx.createGain();
-                    osc2.connect(g2); g2.connect(ctx.destination);
-                    osc2.type = 'square'; osc2.frequency.setValueAtTime(1319, ctx.currentTime); // E6
-                    osc2.start(); osc2.stop(ctx.currentTime + 0.1);
-                }, 100);
-                osc.start(now); osc.stop(now + 0.1);
+                osc.type = 'square'; osc.frequency.setValueAtTime(988, now);
+                setTimeout(() => { const o2=ctx.createOscillator(); const g2=ctx.createGain(); o2.connect(g2); g2.connect(ctx.destination); o2.type='square'; o2.frequency.setValueAtTime(1319, ctx.currentTime); o2.start(); o2.stop(ctx.currentTime+0.1); }, 100);
+                osc.start(now); osc.stop(now+0.1);
             } else if (theme === 'kof') {
-                // Golpe grave
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(150, now);
-                osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                osc.start(now); osc.stop(now + 0.3);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, now); osc.frequency.exponentialRampToValueAtTime(50, now+0.2);
+                gain.gain.exponentialRampToValueAtTime(0.01, now+0.3); osc.start(now); osc.stop(now+0.3);
             } else {
-                // Standard Beep
-                osc.frequency.setValueAtTime(type === 'error' ? 200 : 800, now);
-                osc.type = type === 'error' ? 'sawtooth' : 'sine';
-                osc.start(now); osc.stop(now + 0.15);
+                osc.frequency.setValueAtTime(type==='error'?200:800, now); osc.type = type==='error'?'sawtooth':'sine';
+                osc.start(now); osc.stop(now+0.15);
             }
         };
 
-        // --- MÓDULO DE CHAT ---
+        // --- LOGIN SCREEN ---
+        const LoginScreen = ({ onLogin }) => {
+            const [pin, setPin] = useState("");
+            const [loading, setLoading] = useState(false);
+
+            const handleLogin = async () => {
+                setLoading(true);
+                
+                // 1. REVISIÓN LOCAL (PRIORIDAD ALTA)
+                // Esto arregla el problema de "Pin Incorrecto" si la BD está sucia
+                const hardcodedUser = INITIAL_USERS.find(u => u.pin === pin);
+
+                if (hardcodedUser) {
+                    // Si existe en nuestra lista fija, ACTUALIZAMOS LA BD y entramos
+                    console.log("Usuario encontrado localmente. Sincronizando DB...");
+                    try {
+                        await db.collection('users').doc(hardcodedUser.pin).set(hardcodedUser);
+                    } catch (e) {
+                        console.error("Error sync usuario:", e); // No bloqueamos el login si falla internet
+                    }
+                    onLogin(hardcodedUser);
+                    return;
+                }
+
+                // 2. REVISIÓN DB (FALLBACK)
+                // Por si agregas usuarios nuevos que no están en el código
+                try {
+                    const userSnap = await db.collection('users').where('pin', '==', pin).get();
+                    if (!userSnap.empty) {
+                        onLogin(userSnap.docs[0].data());
+                    } else {
+                        alert("PIN INCORRECTO");
+                        setPin("");
+                    }
+                } catch (e) {
+                    alert("Error de conexión: " + e.message);
+                }
+                setLoading(false);
+            };
+
+            return (
+                <div className="h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
+                    <div className="mb-8 text-center animate-fade-in">
+                        <Icon name="shield-check" size={50} className="mx-auto mb-2 text-blue-500"/>
+                        <h1 className="text-2xl font-black">ACCESO CIRINEO</h1>
+                        <p className="text-slate-400 text-sm">Ingrese su PIN personal</p>
+                    </div>
+                    
+                    <input type="password" value={pin} readOnly className="bg-slate-800 text-center text-3xl tracking-[10px] w-full max-w-[200px] py-4 rounded-lg mb-6 border border-slate-700 outline-none"/>
+
+                    <div className="grid grid-cols-3 gap-4 w-full max-w-[280px]">
+                        {[1,2,3,4,5,6,7,8,9].map(n => (
+                            <button key={n} onClick={() => setPin(p => p.length < 8 ? p + n : p)} className="bg-slate-800 p-4 rounded-lg text-xl font-bold active:bg-blue-900">{n}</button>
+                        ))}
+                        <button onClick={() => setPin("")} className="bg-red-900/50 text-red-400 p-4 rounded-lg flex justify-center items-center"><Icon name="x"/></button>
+                        <button onClick={() => setPin(p => p + "0")} className="bg-slate-800 p-4 rounded-lg text-xl font-bold">0</button>
+                        <button onClick={handleLogin} className="bg-blue-600 p-4 rounded-lg flex justify-center items-center"><Icon name="arrow-right"/></button>
+                    </div>
+                    {loading && <p className="mt-4 text-xs animate-pulse text-blue-400">Verificando credenciales...</p>}
+                </div>
+            );
+        };
+
+        // --- CHAT MODULE ---
         const ChatModule = ({ user, onClose }) => {
             const [msgs, setMsgs] = useState([]);
             const [text, setText] = useState("");
-            
+            const messagesEndRef = useRef(null);
+
             useEffect(() => {
-                return db.collection('chat_grupal').orderBy('timestamp', 'desc').limit(50)
+                const unsub = db.collection('chat_grupal').orderBy('timestamp', 'desc').limit(50)
                     .onSnapshot(snap => setMsgs(snap.docs.map(d => d.data()).reverse()));
+                return () => unsub();
             }, []);
+
+            useEffect(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs]);
 
             const sendMsg = async () => {
                 if (!text.trim()) return;
@@ -174,316 +221,179 @@
                 const now = new Date();
                 const signature = `ESTA ES UNA COPIA DE LA CONVERSACIÓN GRUPAL DE VIVA ROUSS "TEJIDO" FUE DESCARGADO EL DÍA ${now.toLocaleDateString()} A LA HORA ${now.toLocaleTimeString()} POR ${user.name} QUE USA EL PIN ${user.pin}`;
 
-                // 1. Firma Visible (Pequeña)
-                doc.setFontSize(8);
-                doc.setTextColor(150);
-                doc.text(signature, 10, 10);
-
-                // 2. Contenido
-                doc.setFontSize(12);
-                doc.setTextColor(0);
+                doc.setFontSize(8); doc.setTextColor(150); doc.text(signature, 10, 10);
+                doc.setFontSize(12); doc.setTextColor(0);
+                
                 let y = 20;
                 msgs.forEach(m => {
                     if (y > 280) { doc.addPage(); y = 20; }
-                    doc.setFont(undefined, 'bold');
-                    doc.text(`${m.user}:`, 10, y);
-                    doc.setFont(undefined, 'normal');
-                    doc.text(`${m.msg}`, 50, y);
+                    doc.setFont(undefined, 'bold'); doc.text(`${m.user}:`, 10, y);
+                    doc.setFont(undefined, 'normal'); doc.text(`${m.msg}`, 50, y);
                     y += 10;
                 });
 
-                // 3. FIRMA ESTEGANOGRÁFICA (Metadatos + Propiedad)
-                doc.setProperties({
-                    title: "Chat Log Viva Rouss",
-                    subject: signature, // Esto aparece en las propiedades del archivo
-                    keywords: signature,
-                    creator: "Cirineo System"
-                });
-
+                doc.setProperties({ title: "Chat Log", subject: signature, keywords: signature });
                 doc.save(`chat_log_${now.getTime()}.pdf`);
             };
 
             return (
                 <div className="fixed inset-0 bg-black/90 z-50 flex flex-col p-4 animate-fade-in text-white">
                     <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-2">
-                        <h2 className="text-xl font-bold">Chat de Planta</h2>
+                        <h2 className="font-bold">Chat Grupal</h2>
                         <div className="flex gap-2">
-                            <button onClick={downloadPDF} className="bg-blue-600 px-3 py-1 rounded text-xs font-bold">PDF</button>
-                            <button onClick={onClose} className="bg-red-600 px-3 py-1 rounded text-xs font-bold">X</button>
+                            <button onClick={downloadPDF} className="bg-blue-600 px-3 py-1 rounded text-xs">PDF</button>
+                            <button onClick={onClose} className="bg-red-600 px-3 py-1 rounded text-xs">X</button>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                    <div className="flex-1 overflow-y-auto space-y-2 mb-4 p-2">
                         {msgs.map((m, i) => (
-                            <div key={i} className={`p-2 rounded max-w-[80%] ${m.user === user.name ? 'bg-blue-900 ml-auto' : 'bg-gray-800'}`}>
-                                <div className="text-[10px] text-gray-400 font-bold">{m.user}</div>
+                            <div key={i} className={`p-2 rounded max-w-[85%] text-sm ${m.user === user.name ? 'bg-blue-900 ml-auto' : 'bg-gray-800'}`}>
+                                <div className="text-[10px] text-gray-400 font-bold mb-1">{m.user}</div>
                                 <div>{m.msg}</div>
                             </div>
                         ))}
+                        <div ref={messagesEndRef} />
                     </div>
                     <div className="flex gap-2">
-                        <input value={text} onChange={e => setText(e.target.value)} placeholder="Escribe algo..." className="flex-1 bg-gray-800 rounded p-2 text-white outline-none border border-gray-600"/>
-                        <button onClick={sendMsg} className="bg-green-600 px-4 py-2 rounded font-bold"><Icon name="send" size={16}/></button>
+                        <input value={text} onChange={e => setText(e.target.value)} placeholder="Mensaje..." className="flex-1 bg-gray-800 rounded p-3 outline-none"/>
+                        <button onClick={sendMsg} className="bg-green-600 px-4 rounded"><Icon name="send" size={20}/></button>
                     </div>
                 </div>
             );
         };
 
-        // --- MÓDULO CONSOLIDADOR (Simplificado para integración) ---
-        const ConsolidatorModule = ({ user, onClose }) => {
-            const [items, setItems] = useState([]);
-            
-            useEffect(() => {
-                // Solo mostrar los últimos 50 para rendimiento en móvil
-                return db.collection('registro_produccion').orderBy('fecha', 'desc').limit(50)
-                    .onSnapshot(snap => setItems(snap.docs.map(d => ({...d.data(), id: d.id}))));
-            }, []);
-
-            const canApprove = user.permissions.includes('approve');
-
-            const handleAction = async (id, action) => {
-                if (!confirm(`¿Estás seguro de ${action}?`)) return;
-                try {
-                    if (action === 'delete') await db.collection('registro_produccion').doc(id).delete();
-                    // Lógica de aprobar simplificada para demo
-                    if (action === 'approve') {
-                         const item = items.find(i => i.id === id);
-                         await db.collection('registros_aprobados').doc(id).set({...item, aprobadoPor: user.name, fechaAprobacion: new Date()});
-                    }
-                } catch(e) { alert("Error: " + e.message); }
-            };
-
-            return (
-                <div className="fixed inset-0 bg-slate-100 z-40 flex flex-col animate-slide-up text-slate-900">
-                    <div className="p-4 bg-white shadow flex justify-between items-center">
-                        <h2 className="font-bold text-lg">Producción ({items.length})</h2>
-                        <button onClick={onClose} className="bg-slate-200 p-2 rounded-full"><Icon name="x"/></button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                        {items.map(item => (
-                            <div key={item.id} className="bg-white p-3 rounded-lg shadow border-l-4 border-indigo-500">
-                                <div className="flex justify-between font-bold">
-                                    <span>{item.codigo_paquete}</span>
-                                    <span className="text-xs text-slate-400">{item.fecha_legible}</span>
-                                </div>
-                                <div className="text-sm">{item.modelo} - {item.partida}</div>
-                                <div className="text-xs mt-1 bg-slate-100 p-1 rounded inline-block">Tejedor: {item.tejedor || 'S/N'}</div>
-                                {canApprove && (
-                                    <div className="flex gap-2 mt-2 pt-2 border-t">
-                                        <button onClick={() => handleAction(item.id, 'approve')} className="flex-1 bg-green-100 text-green-700 py-1 rounded text-xs font-bold">APROBAR</button>
-                                        <button onClick={() => handleAction(item.id, 'delete')} className="flex-1 bg-red-100 text-red-700 py-1 rounded text-xs font-bold">DESCARTAR</button>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        };
-
-        // --- PANTALLA DE LOGIN ---
-        const LoginScreen = ({ onLogin }) => {
-            const [pin, setPin] = useState("");
-            const [loading, setLoading] = useState(false);
-
-            const handleLogin = async () => {
-                setLoading(true);
-                // 1. Sincronizar Usuarios Hardcoded si la DB está vacía
-                const usersSnap = await db.collection('users').get();
-                if (usersSnap.empty) {
-                    const batch = db.batch();
-                    INITIAL_USERS.forEach(u => batch.set(db.collection('users').doc(u.pin), u));
-                    await batch.commit();
-                    console.log("Usuarios iniciales creados.");
-                }
-
-                // 2. Verificar PIN
-                const userDoc = await db.collection('users').where('pin', '==', pin).get();
-                if (!userDoc.empty) {
-                    onLogin(userDoc.docs[0].data());
-                } else {
-                    alert("PIN Incorrecto");
-                    setPin("");
-                }
-                setLoading(false);
-            };
-
-            return (
-                <div className="h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white">
-                    <div className="mb-8 text-center">
-                        <Icon name="scan-barcode" size={48} className="mx-auto mb-2 text-cyan-400"/>
-                        <h1 className="text-2xl font-black tracking-tighter">CIRINEO <span className="text-cyan-400">SCANNER</span></h1>
-                        <p className="text-slate-500 text-sm">G6 / ULTIMATE EDITION</p>
-                    </div>
-                    
-                    <input 
-                        type="password" 
-                        value={pin} 
-                        readOnly 
-                        className="bg-slate-800 text-center text-3xl tracking-[10px] w-full max-w-[200px] py-4 rounded-lg mb-6 border border-slate-700 focus:border-cyan-500 outline-none transition-all"
-                        placeholder="••••"
-                    />
-
-                    <div className="grid grid-cols-3 gap-4 w-full max-w-[280px]">
-                        {[1,2,3,4,5,6,7,8,9].map(n => (
-                            <button key={n} onClick={() => setPin(prev => prev.length < 8 ? prev + n : prev)} className="bg-slate-800 p-4 rounded-lg text-xl font-bold active:bg-cyan-900 transition-colors">{n}</button>
-                        ))}
-                        <button onClick={() => setPin("")} className="bg-red-900/50 text-red-400 p-4 rounded-lg flex items-center justify-center"><Icon name="x"/></button>
-                        <button onClick={() => setPin(prev => prev + "0")} className="bg-slate-800 p-4 rounded-lg text-xl font-bold">0</button>
-                        <button onClick={handleLogin} className="bg-cyan-600 text-white p-4 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(8,145,178,0.5)]"><Icon name="arrow-right"/></button>
-                    </div>
-                    {loading && <p className="mt-4 text-xs animate-pulse text-cyan-400">Verificando acceso...</p>}
-                </div>
-            );
-        };
-
-        // --- PANTALLA PRINCIPAL ---
+        // --- MAIN APP ---
         const MainApp = ({ user, onLogout }) => {
             const [scanning, setScanning] = useState(false);
             const [showChat, setShowChat] = useState(false);
-            const [showConsolidator, setShowConsolidator] = useState(false);
-            const [scannedCodes, setScannedCodes] = useState([]);
-            const [cameraError, setCameraError] = useState(null);
-            
+            const [scanCount, setScanCount] = useState(0);
             const scannerRef = useRef(null);
 
-            // Obtener clase base del tema
-            const themeClass = `h-screen flex flex-col theme-${user.theme}`;
-
-            // Lógica de Cámara "Force Back Camera"
+            // AUTO-START CAMERA LOGIC
             useEffect(() => {
-                if (scanning && !scannerRef.current) {
-                    startScanner();
+                if (scanning) {
+                    initCamera();
+                } else {
+                    stopCamera();
                 }
-                return () => stopScanner();
             }, [scanning]);
 
-            const startScanner = async () => {
-                setCameraError(null);
+            const initCamera = async () => {
                 try {
                     const devices = await Html5Qrcode.getCameras();
                     if (devices && devices.length) {
-                        // INTENTO DE SELECCIONAR CÁMARA 2 (Índice 1) O LA ÚLTIMA DISPONIBLE (Suelen ser las traseras)
-                        // Si hay más de 1 cámara, probablemente la 1 (índice 1) es la trasera.
-                        const cameraId = devices.length > 1 ? devices[1].id : devices[0].id;
-                        
+                        // INTENTAR FORZAR CÁMARA TRASERA (Normalmente es el último índice o el índice 1)
+                        // Si hay 2 cámaras: 0 suele ser frontal, 1 trasera.
+                        // Si hay más, la última suele ser la trasera "main".
+                        let cameraId = devices[0].id;
+                        if (devices.length > 1) {
+                            // Buscamos palabras clave 'back' o 'environment'
+                            const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('trasera'));
+                            if (backCamera) {
+                                cameraId = backCamera.id;
+                            } else {
+                                cameraId = devices[1].id; // Fallback a la segunda cámara
+                            }
+                        }
+
                         const html5QrCode = new Html5Qrcode("reader");
                         scannerRef.current = html5QrCode;
 
                         await html5QrCode.start(
                             cameraId, 
-                            {
-                                fps: 10,
-                                qrbox: { width: 250, height: 250 },
-                                aspectRatio: 1.0
-                            },
-                            (decodedText) => {
-                                handleScan(decodedText);
-                            },
-                            (errorMessage) => {
-                                // Ignorar errores de frame
-                            }
+                            { fps: 10, qrbox: { width: 250, height: 250 } },
+                            (decodedText) => handleScan(decodedText),
+                            () => {}
                         );
                     } else {
-                        setCameraError("No se encontraron cámaras.");
+                        alert("No se detectaron cámaras.");
+                        setScanning(false);
                     }
                 } catch (err) {
                     console.error(err);
-                    setCameraError("Error al iniciar cámara: " + err.message);
+                    alert("Error cámara: " + err);
+                    setScanning(false);
                 }
             };
 
-            const stopScanner = () => {
+            const stopCamera = () => {
                 if (scannerRef.current) {
                     scannerRef.current.stop().then(() => {
                         scannerRef.current.clear();
                         scannerRef.current = null;
-                    }).catch(err => console.error(err));
+                    }).catch(err => console.error("Error stop", err));
                 }
             };
 
             const handleScan = (code) => {
-                // Evitar lecturas múltiples rápidas
-                if (scannedCodes.includes(code)) {
-                     playSound('error', user.theme); // Ya escaneado
-                     return; 
-                }
-                
                 playSound('success', user.theme);
-                const newCode = code.trim();
+                setScanCount(p => p + 1);
                 
-                // Guardar localmente para UI
-                setScannedCodes(prev => [newCode, ...prev]);
+                // Pausa breve para no leer el mismo código 100 veces
+                if (scannerRef.current) scannerRef.current.pause();
 
-                // Guardar en DB
                 db.collection('registro_produccion').add({
-                    codigo_paquete: newCode,
-                    tejedor: user.name,
+                    codigo: code,
+                    usuario: user.name,
                     fecha: firebase.firestore.FieldValue.serverTimestamp(),
-                    fecha_legible: new Date().toLocaleString()
+                    hora: new Date().toLocaleTimeString()
                 });
 
-                // Pausar brevemente
-                if (scannerRef.current) {
-                    scannerRef.current.pause();
-                    setTimeout(() => scannerRef.current.resume(), 1500);
-                }
+                setTimeout(() => {
+                    if (scannerRef.current) scannerRef.current.resume();
+                }, 1500);
             };
+
+            // Clase CSS dinámica según tema
+            const themeClass = `h-screen flex flex-col theme-${user.theme}`;
 
             return (
                 <div className={themeClass}>
-                    {/* HEADER */}
-                    <div className="p-4 flex justify-between items-center bg-black/10 backdrop-blur-sm z-10 shadow-md">
-                        <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-black text-lg border border-white/30">
+                    {/* TOP BAR */}
+                    <div className="top-bar p-4 flex justify-between items-center bg-black/5 shadow-sm z-10">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center font-bold border border-white/50 text-lg">
                                 {user.name.charAt(0)}
                             </div>
-                            <div>
-                                <h2 className="font-bold leading-none">{user.name}</h2>
-                                <p className="text-[10px] opacity-70 uppercase tracking-widest">{user.role}</p>
+                            <div className="leading-tight">
+                                <div className="font-bold text-sm">{user.name}</div>
+                                <div className="text-[10px] opacity-70">{user.role.toUpperCase()}</div>
                             </div>
                         </div>
-                        <button onClick={onLogout} className="opacity-70 hover:opacity-100"><Icon name="log-out"/></button>
+                        <button onClick={onLogout} className="p-2 bg-red-500/20 rounded-full"><Icon name="log-out" size={18}/></button>
                     </div>
 
-                    {/* MAIN CONTENT AREA */}
-                    <div className="flex-1 relative overflow-hidden flex flex-col">
-                        
+                    {/* CONTENT */}
+                    <div className="flex-1 relative bg-black/5 overflow-hidden flex flex-col">
                         {scanning ? (
                             <div className="absolute inset-0 bg-black flex flex-col z-20">
-                                <div className="relative flex-1 bg-black">
+                                <div className="relative flex-1">
                                     <div id="reader"></div>
-                                    {cameraError && <div className="absolute inset-0 flex items-center justify-center text-red-500 p-4 text-center font-bold bg-black">{cameraError} <br/> Toca fuera para reintentar.</div>}
-                                    
-                                    {/* Overlay Guía */}
-                                    <div className="absolute inset-0 border-[50px] border-black/50 pointer-events-none flex items-center justify-center">
+                                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                                         <div className="w-64 h-64 border-2 border-white/50 relative">
-                                            <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-green-500"></div>
-                                            <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-green-500"></div>
-                                            <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-green-500"></div>
-                                            <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-green-500"></div>
+                                            <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-500"></div>
+                                            <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-500"></div>
+                                            <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-500"></div>
+                                            <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-500"></div>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="p-4 bg-gray-900 flex justify-between items-center shrink-0">
-                                    <div className="text-white text-xs">Escaneados: {scannedCodes.length}</div>
-                                    <button onClick={() => setScanning(false)} className="bg-red-600 text-white px-6 py-2 rounded-full font-bold">DETENER</button>
+                                <div className="p-4 bg-gray-900 flex justify-between items-center text-white">
+                                    <span className="font-mono">Escaneados: {scanCount}</span>
+                                    <button onClick={() => setScanning(false)} className="bg-red-600 px-6 py-2 rounded-full font-bold">DETENER</button>
                                 </div>
                             </div>
                         ) : (
-                            <div className="p-6 flex flex-col items-center justify-center h-full gap-6">
-                                {/* SCAN BUTTON */}
-                                <button onClick={() => setScanning(true)} className="btn w-48 h-48 rounded-full flex flex-col items-center justify-center gap-2 text-xl font-bold shadow-2xl transition-transform hover:scale-105 active:scale-95">
-                                    <Icon name="scan" size={48}/>
+                            <div className="h-full flex flex-col items-center justify-center p-6 gap-6 animate-slide-up">
+                                <button onClick={() => setScanning(true)} className="btn btn-scan w-48 h-48 flex flex-col items-center justify-center gap-2 text-xl font-bold shadow-xl transition-transform transform active:scale-95">
+                                    <Icon name="scan-barcode" size={48}/>
                                     <span>ESCANEAR</span>
                                 </button>
-
-                                {/* ACCESOS DIRECTOS (MARCO) */}
+                                
                                 {user.role === 'pro' && user.shortcuts && (
-                                    <div className="w-full grid grid-cols-2 gap-3 mt-4">
-                                        {user.shortcuts.map((sc, idx) => (
-                                            <a key={idx} href={sc.url} target="_blank" className="bg-white/50 p-3 rounded-xl text-center text-xs font-bold backdrop-blur block text-blue-600">
-                                                {sc.name}
-                                            </a>
+                                    <div className="grid grid-cols-2 gap-3 w-full">
+                                        {user.shortcuts.map((sc, i) => (
+                                            <a key={i} href={sc.url} target="_blank" className="btn p-3 text-center text-xs block">{sc.name}</a>
                                         ))}
                                     </div>
                                 )}
@@ -492,34 +402,28 @@
                     </div>
 
                     {/* BOTTOM NAV */}
-                    <div className="p-3 bg-white/10 backdrop-blur-md flex justify-around items-center z-10 pb-6">
-                        <button onClick={() => setShowChat(true)} className="flex flex-col items-center gap-1 opacity-80 hover:opacity-100">
-                            <div className="p-2 bg-white/20 rounded-full"><Icon name="message-square" size={20}/></div>
-                            <span className="text-[10px] font-bold">CHAT</span>
+                    <div className="p-3 bg-white/10 backdrop-blur-md flex justify-around items-center border-t border-white/10 pb-6">
+                        <button onClick={() => setShowChat(true)} className="flex flex-col items-center opacity-80 active:scale-95">
+                            <Icon name="message-circle" size={24}/>
+                            <span className="text-[10px] font-bold mt-1">CHAT</span>
                         </button>
-
                         {(user.permissions.includes('view') || user.permissions.includes('approve')) && (
-                            <button onClick={() => setShowConsolidator(true)} className="flex flex-col items-center gap-1 opacity-80 hover:opacity-100">
-                                <div className="p-2 bg-white/20 rounded-full relative">
-                                    <Icon name="list-checks" size={20}/>
-                                    {user.permissions.includes('approve') && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping"></span>}
-                                </div>
-                                <span className="text-[10px] font-bold">PROD.</span>
+                            <button className="flex flex-col items-center opacity-80 active:scale-95">
+                                <Icon name="clipboard-list" size={24}/>
+                                <span className="text-[10px] font-bold mt-1">PRODUCCIÓN</span>
                             </button>
                         )}
                     </div>
 
-                    {/* MODALES */}
+                    {/* MODAL CHAT */}
                     {showChat && <ChatModule user={user} onClose={() => setShowChat(false)} />}
-                    {showConsolidator && <ConsolidatorModule user={user} onClose={() => setShowConsolidator(false)} />}
                 </div>
             );
         };
 
         const Root = () => {
             const [user, setUser] = useState(null);
-
-            return user ? <MainApp user={user} onLogout={() => setUser(null)} /> : <LoginScreen onLogin={setUser} />;
+            return user ? <MainApp user={user} onLogout={() => setUser(null)}/> : <LoginScreen onLogin={setUser}/>;
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
