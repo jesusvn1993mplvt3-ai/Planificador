@@ -2,295 +2,443 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Balta Escanear v6</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Textil - Vista América (MAES)</title>
     
-    <meta property="og:title" content="Balta Escanear - Control de Producción">
-    <meta property="og:description" content="Sistema de escaneo de paquetes para la unidad de producción Balta.">
-    <meta property="og:image" content="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png">
-    <meta property="og:url" content="https://cirineo-cec21.web.app">
-    <meta property="og:type" content="website">
-
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png">
-    
-    <meta name="theme-color" content="#020617">
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link id="appIcon" rel="icon" href="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/icon.ico">
+    <meta name="theme-color" content="#be185d"> <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
-        body { margin: 0; background: #020617; font-family: 'Inter', sans-serif; overflow: hidden; color: white; overscroll-behavior: none; }
-        .glass-card { background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .glass-card:active { transform: scale(0.98); background: rgba(255, 255, 255, 0.15); }
+        /* --- ESTILOS DE IMPRESIÓN SIMPLIFICADOS PARA VISOR --- */
+        @media print {
+            body, html, #root { background: white; width: 100%; height: 100%; margin: 0; padding: 0; }
+            .no-print, .dashboard-grid { display: none !important; }
+            .print-only { display: block !important; }
+        }
         
-        .fixed-header-container {
-            position: fixed; top: 0; left: 0; width: 100%; z-index: 100;
-            background: rgba(2, 6, 23, 0.95); backdrop-filter: blur(12px);
-            padding: 10px 0; display: flex; justify-content: center;
-            border-bottom: 1px solid rgba(255, 0, 0, 0.15);
-        }
-        .header-logo-img { height: 50px; width: auto; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,0,0,0.3)); }
+        /* Dashboard Styles */
+        .dashboard-grid { display: grid; grid-template-rows: 60vh 1fr; height: 100vh; overflow: hidden; }
+        .top-pane { overflow-y: auto; border-bottom: 4px solid #be185d; } /* Borde Rosa Maes */
+        .bottom-pane { overflow-x: auto; background: #1e293b; color: white; display: flex; padding: 10px; gap: 10px; }
+        .machine-card { min-width: 320px; background: #334155; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; height: 100%; position: relative; }
         
-        /* Botón de cierre personalizado Balta-X */
-        .btn-close-balta {
-            position: relative; width: 44px; height: 44px;
-            display: flex; align-items: center; justify-content: center;
-            background: rgba(255, 255, 255, 0.1); border-radius: 12px;
-            overflow: hidden; border: 1px solid rgba(255,255,255,0.2);
-            transition: all 0.2s;
-        }
-        .btn-close-balta:active { transform: scale(0.9); background: rgba(255, 0, 0, 0.2); }
-        .balta-mini-logo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; z-index: 10; }
-        .x-black-bg { 
-            position: absolute; font-family: sans-serif; font-weight: 900; font-size: 38px;
-            color: black; z-index: 5; line-height: 1; transform: translateY(-1px);
-        }
+        /* Estilos Especiales MAES */
+        .maes-highlight { border: 3px solid #db2777 !important; background-color: #fdf2f8 !important; }
+        .maes-machine { border: 2px solid #db2777 !important; }
+        .maes-machine .machine-number { color: #f472b6 !important; } /* Texto Rosa */
 
-        .red-light-scanner {
-            position: absolute; bottom: 0; left: 0; width: 100%; height: 3px;
-            background: linear-gradient(90deg, transparent 0%, #ff0000 50%, transparent 100%);
-            box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.7);
-            animation: scanMove 2.5s infinite linear;
-        }
-        @keyframes scanMove { 0% { transform: translateX(-100%); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateX(100%); opacity: 0; } }
-
-        .drawer-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); }
-        .drawer-content { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #0f172a; border-left: 1px solid #1e293b; }
-        
-        .preview-card { display: flex; height: 130px; border-radius: 12px; overflow: hidden; background: #1e293b; border: 1px solid #334155; }
-        .preview-img-col { width: 35%; height: 100%; position: relative; background: #000; overflow: hidden; }
-        .preview-img-col img { width: 100%; height: 100%; object-fit: cover; }
-        .preview-data-col { width: 65%; padding: 10px; display: flex; flex-direction: column; justify-content: space-between; }
-
-        #reader { width: 100% !important; border: none !important; height: 100% !important; }
-        #reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; border-radius: 12px; }
-        
-        .scan-window { height: 150px; width: 100%; border: 2px solid #0ea5e9; border-radius: 16px; overflow: hidden; position: relative; background: #000; }
-        .scan-laser { position: absolute; width: 100%; height: 2px; background: #38bdf8; box-shadow: 0 0 15px #38bdf8; animation: laserMove 2s infinite linear; z-index: 10; top: 0; }
-        @keyframes laserMove { 0% { top: 0%; } 50% { top: 100%; } 100% { top: 0%; } }
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .pkg-list { overflow-y: auto; flex-grow: 1; margin-top: 10px; padding-right: 4px; }
+        .pkg-list::-webkit-scrollbar { width: 6px; }
+        .pkg-list::-webkit-scrollbar-thumb { background: #64748b; border-radius: 4px; }
+        .obs-input { background: transparent; border: none; color: #cbd5e1; width: 100%; font-size: 10px; border-bottom: 1px solid #475569; }
+        .obs-input:focus { outline: none; border-bottom: 1px solid #f472b6; color: white; } /* Focus Rosa */
     </style>
 </head>
-<body>
+<body class="bg-slate-100 text-slate-800 font-sans">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-
+        const { useState, useEffect, useMemo, useRef } = React;
+        
         const firebaseConfig = {
             apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
             authDomain: "cirineo-cec21.firebaseapp.com",
             projectId: "cirineo-cec21",
             storageBucket: "cirineo-cec21.firebasestorage.app",
             messagingSenderId: "620210618284",
-            appId: "1:620210618284:web:482bab9bf74650fff18409"
+            appId: "1:620210618284:web:482bab9bf74650fff18409",
+            measurementId: "G-B7YLM78RVW"
         };
+
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        const FieldValue = firebase.firestore.FieldValue;
 
-        const SUCCESS_SOUND_URL = "https://github.com/jesusvn1993mplvt3-ai/TejidoBalta/raw/refs/heads/main/Data/author.mp3";
-        const successAudio = new Audio(SUCCESS_SOUND_URL);
+        const Icon = ({ name, size = 18, className }) => <i data-lucide={name} width={size} height={size} className={className}></i>;
 
-        const Icon = ({ name, size = 24, className, onClick }) => {
-            const ref = useRef(null);
-            useEffect(() => {
-                if (ref.current && lucide.icons[name]) {
-                    ref.current.innerHTML = lucide.icons[name].toSvg({ width: size, height: size, class: className });
-                }
-            }, [name, className, size]);
-            return <span ref={ref} onClick={onClick} className={`inline-flex items-center justify-center ${onClick ? 'cursor-pointer' : ''}`}></span>;
-        };
+        // --- COMPONENTE: TARJETA DE MÁQUINA (PANEL INFERIOR) ---
+        const MachineCard = ({ maquina, orders }) => {
+            const [is24Hours, setIs24Hours] = useState(true);
+            
+            // Detectar si hay orden de MAES en esta máquina
+            const hasMaesOrder = useMemo(() => {
+                return orders.some(o => o.cliente && o.cliente.toUpperCase().includes('MAES'));
+            }, [orders]);
 
-        // --- BOTÓN CERRAR BALTA (MINI LOGO + X NEGRA) ---
-        const CloseButtonBalta = ({ onClick }) => (
-            <button onClick={onClick} className="btn-close-balta">
-                <span className="x-black-bg">X</span>
-                <img 
-                    src="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png" 
-                    className="balta-mini-logo" 
-                    alt="Cerrar"
-                />
-            </button>
-        );
+            const pendingPackages = useMemo(() => {
+                let pkgs = [];
+                orders.forEach(o => {
+                    const incomplete = o.progreso?.filter(p => !p.finished) || [];
+                    incomplete.forEach(p => {
+                        const pieceData = o.subPiecesData?.find(sp => sp.pieza === p.piezaNombre) || o;
+                        const timePerPiece = Number(pieceData.tiempo) || 0;
+                        // Pasamos el cliente para identificar paquete por paquete si es necesario
+                        pkgs.push({ 
+                            ...p, 
+                            parentOrderId: o.id, 
+                            orderCode: o.codigo, 
+                            partida: o.partida, 
+                            cliente: o.cliente,
+                            timeTotal: (p.cantidad * timePerPiece) 
+                        });
+                    });
+                });
+                return pkgs; 
+            }, [orders]);
 
-        const SmartImage = ({ modelo }) => {
-            const BASE_URL = "https://raw.githubusercontent.com/sweaters-liliana/MAES26/refs/heads/main/IMAGENES/PAPELETAS/";
-            const [src, setSrc] = useState(`${BASE_URL}${modelo}.png`);
-            const [errorCount, setErrorCount] = useState(0);
-            const handleError = () => { if (errorCount === 0) { setSrc(`${BASE_URL}${modelo}.jpg`); setErrorCount(1); } else { setSrc(null); } };
-            if (!src) return <div className="w-full h-full flex items-center justify-center text-slate-600 text-[10px] font-bold bg-slate-900 uppercase">Sin Foto</div>;
-            return <img src={src} onError={handleError} alt={modelo} />;
-        };
+            const updateObs = async (pkgId, parentOrderId, newVal) => {
+                const order = orders.find(o => o.id === parentOrderId);
+                if(!order) return;
+                const newProgreso = order.progreso.map(p => p.id === pkgId ? {...p, observaciones: newVal} : p);
+                await db.collection('orders').doc(String(parentOrderId)).update({progreso: newProgreso});
+            };
 
-        const PreviewDrawer = ({ isOpen, onClose, pendingScans, ordersCache }) => {
-            if (!isOpen) return null;
+            const totalMinutesLeft = pendingPackages.reduce((sum, p) => sum + p.timeTotal, 0);
+            const hoursPerDay = is24Hours ? 24 : 12;
+            const daysLeft = totalMinutesLeft > 0 ? (totalMinutesLeft / 60 / hoursPerDay).toFixed(1) : 0;
+            const hoursLeft = (totalMinutesLeft / 60).toFixed(1);
+
             return (
-                <div className="fixed inset-0 z-[300] flex justify-end drawer-overlay" onClick={onClose}>
-                    <div className="w-full max-w-sm h-full drawer-content flex flex-col shadow-2xl border-l-2 border-blue-500/30" onClick={e => e.stopPropagation()}>
-                        <div className="bg-[#020617] p-4 border-b border-slate-800 flex justify-between items-center">
-                            <div>
-                                <h2 className="text-white font-black text-xl flex items-center gap-2 tracking-tight">
-                                    <Icon name="list-checks" className="text-blue-500"/> CONSOLIDADOR
-                                </h2>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{pendingScans.length} PENDIENTES</p>
-                            </div>
-                            <CloseButtonBalta onClick={onClose} />
+                <div className={`machine-card shadow-lg ${hasMaesOrder ? 'maes-machine' : 'border-slate-600'}`}>
+                    {hasMaesOrder && (
+                        <div className="absolute top-0 right-0 bg-pink-600 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg z-10">
+                            MAES
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#0f172a]">
-                            {pendingScans.map(scan => {
-                                const order = ordersCache.find(o => String(o.id) === String(scan.orderId));
-                                return (
-                                    <div key={scan.id} className="preview-card animate-fade-in">
-                                        <div className="preview-img-col"><SmartImage modelo={scan.modelo} /></div>
-                                        <div className="preview-data-col bg-[#1e293b]">
-                                            <div className="flex justify-between items-start border-b border-slate-700/50 pb-1">
-                                                <span className="font-mono font-black text-lg text-white">{scan.codigo_paquete}</span>
-                                                <span className="bg-blue-600 text-[9px] px-1.5 py-0.5 rounded font-bold">Pqt {scan.paquete_indice}</span>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-1 text-[11px] mt-2">
-                                                <span className="text-slate-400 font-bold uppercase italic">{scan.modelo}</span>
-                                                <span className="text-right text-yellow-400 font-black">{order?.maquina || '??'}</span>
-                                            </div>
+                    )}
+                    <div className="flex justify-between items-center border-b border-slate-500 pb-2 mb-2">
+                        <div>
+                            <div className="text-xs text-slate-400 font-bold uppercase">Máquina</div>
+                            <div className={`text-3xl font-black machine-number ${hasMaesOrder ? '' : 'text-yellow-400'}`}>#{maquina}</div>
+                        </div>
+                        <div className="text-right">
+                            <button onClick={()=>setIs24Hours(!is24Hours)} className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[10px] font-bold mb-1 border border-slate-500 block w-full">
+                                {is24Hours ? '24 HORAS' : '12 HORAS'}
+                            </button>
+                            <div className="text-xs font-bold text-green-400">{daysLeft} días ({hoursLeft}h)</div>
+                        </div>
+                    </div>
+                    <div className="pkg-list space-y-1">
+                        {pendingPackages.length === 0 && <div className="text-center text-slate-500 text-xs py-4">Máquina Libre</div>}
+                        {pendingPackages.map((p, i) => {
+                            const isMaesPkg = p.cliente && p.cliente.toUpperCase().includes('MAES');
+                            return (
+                                <div key={i} className={`p-2 rounded flex gap-2 items-center text-xs border ${isMaesPkg ? 'bg-pink-900/40 border-pink-500' : 'bg-slate-800 border-slate-700'}`}>
+                                    <div className="font-black text-white text-lg w-10 text-right shrink-0">{p.cantidad}</div>
+                                    <div className="w-24 shrink-0 overflow-hidden">
+                                        <div className="font-bold text-slate-300 truncate text-[10px]" title={p.piezaNombre}>{p.piezaNombre}</div>
+                                        <div className={`text-[9px] font-black truncate ${isMaesPkg ? 'text-pink-300' : 'text-yellow-500'}`}>{p.partida}</div>
+                                    </div>
+                                    <div className="flex-grow pl-2 border-l border-slate-600">
+                                        <input 
+                                            className="obs-input placeholder-slate-600" 
+                                            placeholder="Comentar..." 
+                                            defaultValue={p.observaciones || ''} 
+                                            onBlur={(e) => updateObs(p.id, p.parentOrderId, e.target.value)} 
+                                            onKeyDown={(e) => { if(e.key === 'Enter') e.target.blur(); }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const DashboardBottom = ({ activeOrders }) => {
+            const machineGroups = useMemo(() => {
+                const groups = {};
+                activeOrders.forEach(o => { if(!groups[o.maquina]) groups[o.maquina] = []; groups[o.maquina].push(o); });
+                return Object.keys(groups).sort((a,b) => parseInt(a)-parseInt(b)).map(k => ({ id: k, orders: groups[k] }));
+            }, [activeOrders]);
+
+            return (
+                <div className="bottom-pane shadow-inner">
+                    {machineGroups.map(g => <MachineCard key={g.id} maquina={g.id} orders={g.orders} />)}
+                    {machineGroups.length === 0 && <div className="text-slate-500 w-full flex items-center justify-center font-bold">No hay producción activa</div>}
+                </div>
+            );
+        };
+
+        const SmartImage = ({ repoUrls, codigo, className }) => {
+             const [imgSrc, setImgSrc] = useState(null);
+            const [attempt, setAttempt] = useState({ urlIndex: 0, extension: 'jpg' });
+            useEffect(() => {
+                if (!repoUrls || !repoUrls.length || !codigo) { setImgSrc(null); return; }
+                setAttempt({ urlIndex: 0, extension: 'jpg' });
+                const base = repoUrls[0].endsWith('/') ? repoUrls[0] : repoUrls[0] + '/';
+                setImgSrc(`${base}${codigo}.jpg`);
+            }, [repoUrls, codigo]);
+
+            const handleError = () => {
+                const { urlIndex, extension } = attempt;
+                if (extension === 'jpg') {
+                    const base = repoUrls[urlIndex].endsWith('/') ? repoUrls[urlIndex] : repoUrls[urlIndex] + '/';
+                    setImgSrc(`${base}${codigo}.png`);
+                    setAttempt({ ...attempt, extension: 'png' });
+                } else if (urlIndex < repoUrls.length - 1) {
+                    const nextIdx = urlIndex + 1;
+                    const base = repoUrls[nextIdx].endsWith('/') ? repoUrls[nextIdx] : repoUrls[nextIdx] + '/';
+                    setImgSrc(`${base}${codigo}.jpg`);
+                    setAttempt({ urlIndex: nextIdx, extension: 'jpg' });
+                } else {
+                    setAttempt({ ...attempt, extension: 'fail' });
+                }
+            };
+            if (attempt.extension === 'fail' || !imgSrc) return <div className={`bg-slate-100 flex flex-col items-center justify-center text-slate-300 ${className}`}><Icon name="image-off" size={32} className="mb-2"/><span className="text-[10px] text-center px-2">Sin img</span></div>;
+            return <img src={imgSrc} onError={handleError} className={className} />;
+        };
+
+        // --- ORDER VIEW (SOLO LECTURA / DETALLE) ---
+        const OrderView = ({ order, config, onBack }) => { 
+            const minutosPorPrenda = order.subPiecesData.reduce((acc, curr) => acc + (Number(curr.tiempo) || 0), 0);
+            const piezasPorHora = minutosPorPrenda > 0 ? (60 / minutosPorPrenda).toFixed(0) : 0;
+            const piezasPorTurno = minutosPorPrenda > 0 ? ((60 / minutosPorPrenda) * 12).toFixed(0) : 0;
+            const isMaes = order.cliente && order.cliente.toUpperCase().includes('MAES');
+
+            return (
+                <div className="bg-white min-h-screen relative">
+                    <div className="no-print p-4 border-b flex justify-between bg-slate-50 sticky top-0 z-10 shadow-sm">
+                        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 font-bold hover:text-slate-800"><Icon name="arrow-left"/> Volver al Tablero</button>
+                        <div className="flex gap-2 items-center">
+                             {isMaes && <span className="bg-pink-100 text-pink-700 font-bold px-3 py-1 rounded-full text-xs border border-pink-300 mr-4">ORDEN MAES</span>}
+                             <button onClick={() => window.print()} className="bg-slate-900 text-white px-3 py-1 rounded font-bold text-xs flex items-center gap-1 hover:bg-slate-700">
+                                 <Icon name="printer"/> IMPRIMIR VISTA
+                             </button>
+                        </div>
+                    </div>
+                    
+                    <div className="p-8 print:p-0">
+                        {order.status === 'ARCHIVADO' && <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-4 font-bold text-center no-print">ESTA ORDEN ESTÁ EN EL HISTORIAL</div>}
+
+                        <div className="print-visible-wrapper">
+                             <div className="flex justify-between items-start mb-4 border-b-4 border-black pb-2">
+                                <div className="w-8/12">
+                                    <h1 className="font-black uppercase tracking-tighter text-3xl">{order.cliente}</h1>
+                                    <div className="flex gap-6 items-baseline header-info mt-2">
+                                        <div className="uppercase font-bold text-lg">PARTIDA: {order.partida}</div>
+                                        <div className="text-slate-700 uppercase font-bold text-lg">MOD: {order.codigo}</div>
+                                    </div>
+                                </div>
+                                <div className="w-3/12 text-right">
+                                    <div className="bg-black text-white text-center font-bold text-sm p-1">MÁQUINA</div>
+                                    <div className="text-6xl font-black text-center">{order.maquina}</div>
+                                </div>
+                             </div>
+                            
+                             <div className="flex gap-4 flex-col md:flex-row">
+                                <div className="w-full md:w-7/12 flex flex-col gap-4">
+                                    <div className="border border-slate-300 rounded overflow-hidden">
+                                        <table className="w-full">
+                                            <thead className="bg-slate-100 border-b">
+                                                <tr><th className="text-left p-2">PIEZA</th><th className="w-20 p-2 text-center">TALLA</th><th className="w-20 p-2 text-center">TOTAL</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                {order.subPiecesData.map((p,i)=>(
+                                                    <tr key={i} className="border-b last:border-0">
+                                                        <td className="truncate p-2 font-bold">{p.pieza}</td>
+                                                        <td className="text-center p-2">{p.talla}</td>
+                                                        <td className="text-center font-black p-2">{p.totalPedido}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    
+                                    <div className="border border-slate-300 rounded overflow-hidden">
+                                        <table className="w-full">
+                                            <thead className="bg-slate-800 text-white">
+                                                <tr>
+                                                    <th colSpan="3" className="py-1 text-sm text-center">ENHEBRADO DE MÁQUINA</th>
+                                                </tr>
+                                                <tr className="bg-slate-100 text-slate-800 text-xs">
+                                                    <th className="w-12 p-1 border-b">#</th>
+                                                    <th className="text-left p-1 border-b">Material</th>
+                                                    <th className="w-16 p-1 border-b text-center">%</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {order.threading && order.threading.map((row, i) => (
+                                                    <tr key={i} className="border-b last:border-0">
+                                                        <td className="text-center font-bold p-1 bg-slate-50">{row.guia}</td>
+                                                        <td className="truncate p-1">{row.material}</td>
+                                                        <td className="text-center font-bold p-1">{row.porcentaje}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <div className="w-1/2 border-2 border-slate-300 rounded bg-slate-50 flex flex-col justify-center items-center p-2">
+                                            <span className="text-xs font-bold uppercase w-full text-center border-b border-slate-300 mb-1 text-slate-500">PZS / HORA (EST)</span>
+                                            <span className="text-2xl font-black text-slate-700">{piezasPorHora}</span>
+                                        </div>
+                                        <div className="w-1/2 border-2 border-slate-300 rounded bg-slate-50 flex flex-col justify-center items-center p-2">
+                                            <span className="text-xs font-bold uppercase w-full text-center border-b border-slate-300 mb-1 text-slate-500">PZS / 12H (EST)</span>
+                                            <span className="text-2xl font-black text-slate-700">{piezasPorTurno}</span>
                                         </div>
                                     </div>
-                                );
-                            })}
+                                </div>
+
+                                <div className="w-full md:w-5/12 border-2 border-slate-200 rounded flex items-center justify-center relative bg-white overflow-hidden p-2 min-h-[300px]">
+                                     <SmartImage repoUrls={config.repoUrls} codigo={order.codigo} className="max-h-80 w-full object-contain"/>
+                                </div>
+                            </div>
+                        
+                            <div className="mt-8">
+                                <h3 className="font-bold text-lg mb-2 border-b-2 border-slate-800 pb-1">Progreso de Paquetes</h3>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-200">
+                                                <th className="p-2 border">#</th>
+                                                <th className="p-2 border">CÓDIGO ÚNICO</th> 
+                                                <th className="p-2 border text-center">CANT</th>
+                                                <th className="p-2 border">ESTADO</th>
+                                                <th className="p-2 border">TEJEDOR</th>
+                                                <th className="p-2 border">OBSERVACIONES</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {order.progreso?.map((p, idx) => (
+                                                <tr key={p.id} className={p.finished ? "bg-green-50" : ""}>
+                                                    <td className="text-center font-bold p-2 border">{idx+1}</td>
+                                                    <td className="p-2 font-mono border text-xs" title={p.codigoUnico}>{p.codigoUnico}</td>
+                                                    <td className="text-center font-bold p-2 border">{p.cantidad}</td>
+                                                    <td className="p-2 border text-xs font-bold">
+                                                        {p.finished 
+                                                            ? <span className="text-green-600">TERMINADO {p.fecha && `(${p.fecha})`}</span> 
+                                                            : <span className="text-slate-400">PENDIENTE</span>
+                                                        }
+                                                    </td>
+                                                    <td className="p-2 border">{p.tejedor || '-'}</td>
+                                                    <td className="p-2 border italic text-slate-500 text-xs">{p.observaciones || ''}</td> 
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                             </div>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        const QuickScannerModal = ({ isVisible, onClose, ordersCache, onScanSaved }) => {
-            const [scans, setScans] = useState([]);
-            const [isSaving, setIsSaving] = useState(false);
-            const html5QrCodeRef = useRef(null);
+        const App = () => {
+            const [view, setView] = useState('dashboard');
+            const [orders, setOrders] = useState([]);
+            const [config, setConfig] = useState({});
+            const [selectedOrder, setSelectedOrder] = useState(null);
+            const [viewMode, setViewMode] = useState('active'); 
             
             useEffect(() => {
-                if (isVisible) { startScanner(); } else { stopScanner(); }
-                return () => stopScanner();
-            }, [isVisible]);
-
-            const startScanner = async () => {
-                try {
-                    const html5QrCode = new Html5Qrcode("reader");
-                    html5QrCodeRef.current = html5QrCode;
-                    await html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 250, height: 100 } }, 
-                        (decodedText) => {
-                            const cleanCode = decodedText.trim().toUpperCase();
-                            if (scans.some(s => s.code === cleanCode)) return;
-                            let found = null;
-                            ordersCache.forEach(o => {
-                                const p = o.progreso?.find(p => p.codigoUnico === cleanCode);
-                                if (p) found = { code: cleanCode, orderId: o.id, modelo: o.codigo, partida: o.partida, paquete_indice: p.paqueteNum, paquete_total: p.paquetesDePieza, piezas_en_paquete: p.cantidad, tejedor: "Balta" };
-                            });
-                            if (found) { successAudio.play(); setScans(prev => [found, ...prev]); }
-                        }, () => {});
-                } catch (e) {}
-            };
-
-            const stopScanner = async () => { if (html5QrCodeRef.current) { await html5QrCodeRef.current.stop(); html5QrCodeRef.current = null; } };
-
-            const save = async () => {
-                setIsSaving(true);
-                const batch = db.batch();
-                scans.forEach(s => {
-                    const ref = db.collection('registro_produccion').doc();
-                    batch.set(ref, { ...s, codigo_paquete: s.code, fecha: FieldValue.serverTimestamp(), fecha_legible: new Date().toLocaleString(), tipo: "produccion" });
-                });
-                await batch.commit();
-                onScanSaved(scans.length);
-                onClose();
-                setIsSaving(false);
-            };
-
-            if (!isVisible) return null;
-            return (
-                <div className="fixed inset-0 z-[500] bg-[#020617] flex flex-col p-6 animate-fade-in">
-                    <div className="flex justify-between mb-4 items-center">
-                        <h2 className="text-xl font-black flex items-center gap-2"><Icon name="camera" className="text-blue-500"/> SCANNER ACTIVO</h2>
-                        <CloseButtonBalta onClick={onClose} />
-                    </div>
-                    <div className="scan-window mb-4 shadow-xl shadow-blue-900/20"><div id="reader"></div><div className="scan-laser"></div></div>
-                    <div className="flex-1 overflow-y-auto space-y-2 mb-4">
-                        {scans.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-700 opacity-50"><Icon name="qr-code" size={48} className="mb-2"/><span className="text-sm font-bold uppercase tracking-widest">Esperando códigos...</span></div>
-                        ) : (
-                            scans.map(s => (
-                                <div key={s.code} className="glass-card p-3 rounded-xl flex justify-between font-mono text-sm animate-fade-in">
-                                    <span>{s.code}</span>
-                                    <span className="text-sky-400 font-bold">{s.modelo}</span>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                    <button onClick={save} disabled={scans.length === 0 || isSaving} className={`w-full py-5 rounded-2xl font-black text-white shadow-xl transition-all ${scans.length > 0 ? 'bg-blue-600' : 'bg-slate-800 text-slate-500'}`}>
-                        {isSaving ? 'GUARDANDO LOTE...' : `CONFIRMAR ${scans.length} PAQUETES`}
-                    </button>
-                </div>
-            );
-        };
-
-        const MainApp = () => {
-            const [ordersCache, setOrdersCache] = useState([]);
-            const [pendingScans, setPendingScans] = useState([]);
-            const [showScanner, setShowScanner] = useState(false);
-            const [showPreview, setShowPreview] = useState(false);
-            const [lastSaveCount, setLastSaveCount] = useState(0);
-
-            useEffect(() => {
-                db.collection('orders').where('status','!=','ARCHIVADO').onSnapshot(s => setOrdersCache(s.docs.map(d => ({...d.data(), id: d.id}))));
-                db.collection('registro_produccion').orderBy('fecha','desc').onSnapshot(s => setPendingScans(s.docs.map(d => ({...d.data(), id: d.id}))));
+                const u1 = db.collection('orders').onSnapshot(s => setOrders(s.docs.map(d=>d.data())));
+                const u2 = db.collection('settings').doc('config').onSnapshot(d => setConfig(d.data() || {}));
+                setTimeout(()=>lucide.createIcons(), 500);
+                return () => { u1(); u2(); };
             }, []);
+            useEffect(()=>lucide.createIcons(), [view, orders, viewMode]);
+
+            // --- AGRUPACIÓN ---
+            const displayedGroups = useMemo(() => {
+                const filtered = viewMode === 'active' 
+                    ? orders.filter(o => o.status !== 'ARCHIVADO') 
+                    : orders.filter(o => o.status === 'ARCHIVADO');
+                const groups = {};
+                filtered.forEach(o => {
+                    const key = o.partida || 'SIN_PARTIDA';
+                    if (!groups[key]) { groups[key] = { partida: key, cliente: o.cliente, codigo: o.codigo, orders: [] }; }
+                    groups[key].orders.push(o);
+                });
+                return Object.values(groups).sort((a,b) => b.partida.localeCompare(a.partida));
+            }, [orders, viewMode]);
 
             return (
-                <div className="h-screen w-screen flex flex-col overflow-hidden relative">
-                    <div className="fixed-header-container cursor-pointer active:scale-95 transition-transform" onClick={() => setShowPreview(true)}>
-                        <div className="relative">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/CJNG_Logo.svg/1024px-CJNG_Logo.svg.png" className="header-logo-img" />
-                            {pendingScans.length > 0 && (
-                                <div className="absolute -bottom-1 -right-2 bg-red-600 text-[10px] font-black w-5 h-5 flex items-center justify-center rounded-full border border-red-400 animate-pulse shadow-[0_0_10px_red]">
-                                    {pendingScans.length}
+                <div className="h-screen bg-slate-100 overflow-hidden relative">
+                    
+                    {view === 'detail' && selectedOrder && <div className="absolute inset-0 z-40 bg-white overflow-y-auto print-visible-wrapper"><OrderView order={orders.find(o=>o.id===selectedOrder.id) || selectedOrder} config={config} onBack={()=>setView('dashboard')} /></div>}
+
+                    <div className="dashboard-grid">
+                        <div className="top-pane bg-slate-100 p-4">
+                            <div className="flex justify-between items-center mb-4">
+                                <h1 className="text-2xl font-black text-slate-800 flex gap-2 items-center">
+                                    <Icon name="eye"/> 
+                                    <span>VISTA AMÉRICA</span>
+                                    <span className="text-xs bg-pink-600 text-white px-2 py-1 rounded ml-2 font-bold shadow-sm">MAES</span>
+                                </h1>
+                                <div className="flex gap-2 items-center">
+                                    <button onClick={()=>setViewMode(viewMode === 'active' ? 'history' : 'active')} className={`px-4 py-2 rounded font-bold shadow flex items-center gap-2 text-xs transition ${viewMode === 'active' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-slate-700 text-white'}`}>
+                                        <Icon name={viewMode === 'active' ? 'history' : 'activity'}/> 
+                                        {viewMode === 'active' ? 'VER HISTORIAL' : 'VER PLANTA'}
+                                    </button>
                                 </div>
-                            )}
-                        </div>
-                        <div className="red-light-scanner"></div>
-                    </div>
-
-                    <div className="flex-1 flex flex-col justify-center items-center p-6 pt-24 gap-8">
-                        <div className="text-center">
-                            <img src="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png" className="w-32 h-32 rounded-full mx-auto mb-4 shadow-2xl shadow-red-900/40 border-2 border-red-500/20" />
-                            <h1 className="text-4xl font-black tracking-tighter">BALTA SCAN</h1>
-                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Control Unit 2025</p>
-                        </div>
-
-                        <div onClick={() => setShowScanner(true)} className="glass-card w-full max-w-xs p-10 rounded-[3rem] flex flex-col items-center gap-4 cursor-pointer hover:bg-white/10 group relative overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <Icon name="camera" size={60} className="text-sky-400 group-hover:text-white transition-colors"/>
-                            <span className="font-black text-xs uppercase tracking-widest text-slate-300">Iniciar Escáner</span>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
+                                {displayedGroups.map(group => {
+                                    const isMaesGroup = group.cliente && group.cliente.toUpperCase().includes('MAES');
+                                    return (
+                                        <div key={group.partida} className={`bg-white rounded-lg shadow-md overflow-hidden flex flex-col ${isMaesGroup ? 'maes-highlight' : 'border-t-4 border-slate-400'}`}>
+                                            <div className="bg-slate-50 p-3 border-b flex justify-between items-start">
+                                                <div>
+                                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">PARTIDA</div>
+                                                    <div className="text-xl font-black text-slate-800">{group.partida}</div>
+                                                    <div className="text-sm font-bold text-indigo-700 mt-1">{group.codigo}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                     <div className={`text-[10px] font-bold px-2 py-1 rounded truncate max-w-[100px] ${isMaesGroup ? 'bg-pink-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>{group.cliente}</div>
+                                                </div>
+                                            </div>
+                                            <div className="flex-grow p-2 space-y-2 bg-slate-100/50">
+                                                {group.orders.map(o => {
+                                                    const pct = Math.round((o.progreso.filter(p=>p.finished).length / o.progreso.length)*100);
+                                                    const piezasStr = o.subPiecesData.map(sp => sp.pieza).join(' + ');
+                                                    return (
+                                                        <div key={o.id} onClick={()=>{setSelectedOrder(o); setView('detail')}} className="bg-white p-2 rounded border border-slate-200 hover:border-pink-400 hover:shadow-md cursor-pointer transition-all flex items-center gap-3 group">
+                                                            <div className={`flex flex-col items-center justify-center text-white w-12 h-12 rounded shrink-0 ${isMaesGroup ? 'bg-pink-600' : 'bg-slate-800'}`}>
+                                                                <span className="text-[9px] font-bold opacity-70">MQ</span>
+                                                                <span className="text-lg font-black leading-none">{o.maquina}</span>
+                                                            </div>
+                                                            <div className="flex-grow overflow-hidden">
+                                                                <div className="font-bold text-sm text-slate-700 truncate group-hover:text-pink-600 transition-colors" title={piezasStr}>{piezasStr}</div>
+                                                                <div className="flex justify-between items-end mt-1">
+                                                                    <div className="text-[10px] text-slate-400 font-bold">{o.totalPedido} Pzs</div>
+                                                                    <div className="text-[10px] font-bold text-green-600">{pct}%</div>
+                                                                </div>
+                                                                <div className="w-full bg-slate-200 h-1.5 rounded-full mt-1 overflow-hidden">
+                                                                    <div className={`h-full ${o.status === 'ARCHIVADO' ? 'bg-slate-400' : 'bg-green-500'}`} style={{width:`${pct}%`}}></div>
+                                                                </div>
+                                                            </div>
+                                                            <Icon name="eye" size={16} className="text-slate-300 group-hover:text-pink-500 shrink-0"/>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {displayedGroups.length === 0 && <div className="col-span-full text-center text-slate-400 py-10 font-bold">No hay órdenes en esta vista.</div>}
+                            </div>
                         </div>
                         
-                        {lastSaveCount > 0 && <span className="text-green-400 text-xs font-bold animate-pulse">✓ Guardado: {lastSaveCount} paquetes</span>}
+                        {viewMode === 'active' && <DashboardBottom activeOrders={orders.filter(o => o.status !== 'ARCHIVADO')} />}
+                        {viewMode === 'history' && <div className="bg-slate-800 text-white flex items-center justify-center p-10 font-bold text-xl opacity-50">MODO HISTORIAL</div>}
                     </div>
-
-                    <QuickScannerModal isVisible={showScanner} onClose={() => setShowScanner(false)} ordersCache={ordersCache} onScanSaved={setLastSaveCount} />
-                    <PreviewDrawer isOpen={showPreview} onClose={() => setShowPreview(false)} pendingScans={pendingScans} ordersCache={ordersCache} />
                 </div>
             );
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<MainApp />);
+        root.render(<App />);
     </script>
 </body>
 </html>
