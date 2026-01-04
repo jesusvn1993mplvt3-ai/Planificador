@@ -2,441 +2,293 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Textil - Vista América (MAES)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Balta Scan v15 - Universal</title>
     
-    <link id="appIcon" rel="icon" href="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/CIRINEO/refs/heads/main/icon.ico">
-    <meta name="theme-color" content="#be185d"> <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="theme-color" content="#020617">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
     <style>
-        /* --- ESTILOS DE IMPRESIÓN SIMPLIFICADOS PARA VISOR --- */
-        @media print {
-            body, html, #root { background: white; width: 100%; height: 100%; margin: 0; padding: 0; }
-            .no-print, .dashboard-grid { display: none !important; }
-            .print-only { display: block !important; }
-        }
-        
-        /* Dashboard Styles */
-        .dashboard-grid { display: grid; grid-template-rows: 60vh 1fr; height: 100vh; overflow: hidden; }
-        .top-pane { overflow-y: auto; border-bottom: 4px solid #be185d; } /* Borde Rosa Maes */
-        .bottom-pane { overflow-x: auto; background: #1e293b; color: white; display: flex; padding: 10px; gap: 10px; }
-        .machine-card { min-width: 320px; background: #334155; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; height: 100%; position: relative; }
-        
-        /* Estilos Especiales MAES */
-        .maes-highlight { border: 3px solid #db2777 !important; background-color: #fdf2f8 !important; }
-        .maes-machine { border: 2px solid #db2777 !important; }
-        .maes-machine .machine-number { color: #f472b6 !important; } /* Texto Rosa */
-
-        .pkg-list { overflow-y: auto; flex-grow: 1; margin-top: 10px; padding-right: 4px; }
-        .pkg-list::-webkit-scrollbar { width: 6px; }
-        .pkg-list::-webkit-scrollbar-thumb { background: #64748b; border-radius: 4px; }
-        .obs-input { background: transparent; border: none; color: #cbd5e1; width: 100%; font-size: 10px; border-bottom: 1px solid #475569; }
-        .obs-input:focus { outline: none; border-bottom: 1px solid #f472b6; color: white; } /* Focus Rosa */
+        body { margin: 0; background: #020617; font-family: 'Inter', sans-serif; color: white; overflow: hidden; }
+        .btn-close-balta { position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.1); border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); z-index: 1000; cursor: pointer; }
+        .balta-mini-logo { width: 32px; height: 32px; border-radius: 50%; z-index: 10; }
+        .x-black-bg { position: absolute; font-weight: 900; font-size: 38px; color: black; z-index: 5; }
+        .fixed-header-container { position: fixed; top: 0; left: 0; width: 100%; z-index: 100; background: rgba(2, 6, 23, 0.95); backdrop-filter: blur(12px); padding: 10px 0; display: flex; justify-content: center; border-bottom: 1px solid rgba(255, 0, 0, 0.15); }
+        .header-logo-img { height: 50px; }
+        .scan-wrapper { width: 100%; height: 280px; border: 3px solid #3b82f6; border-radius: 24px; position: relative; overflow: hidden; background: #000; }
+        #reader { width: 100%; height: 100%; }
+        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; border-radius: 20px; }
+        .drawer-container { position: fixed; inset: 0; z-index: 600; display: flex; justify-content: flex-end; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); }
+        .drawer-content { width: 85%; max-width: 320px; height: 100%; background: #0f172a; border-left: 2px solid #3b82f6; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .preview-card { background: #1e293b; border-radius: 12px; display: flex; height: 85px; overflow: hidden; border: 1px solid #334155; margin-bottom: 12px; }
+        .preview-img { width: 70px; height: 100%; background: #000; flex-shrink: 0; }
+        .preview-img img { width: 100%; height: 100%; object-fit: cover; }
+        .wait-overlay { position: absolute; inset: 0; background: rgba(2, 6, 23, 0.9); z-index: 50; display: flex; align-items: center; justify-content: center; font-size: 4rem; font-weight: 900; color: #3b82f6; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useRef } = React;
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyBqHgV4vDat1-VmZfKbiPg7nuiX-ROcexw",
-            authDomain: "cirineo-cec21.firebaseapp.com",
-            projectId: "cirineo-cec21",
-            storageBucket: "cirineo-cec21.firebasestorage.app",
-            messagingSenderId: "620210618284",
-            appId: "1:620210618284:web:482bab9bf74650fff18409",
-            measurementId: "G-B7YLM78RVW"
-        };
-
+        const { useState, useEffect, useRef } = React;
+        const firebaseConfig = { apiKey: "AIzaSyCngQL1pdqghv2vbjkPycT1Xf0C46f7jYs", authDomain: "cirineo-cec21.firebaseapp.com", projectId: "cirineo-cec21", storageBucket: "cirineo-cec21.firebasestorage.app", messagingSenderId: "620210618284", appId: "1:620210618284:web:482bab9bf74650fff18409" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
+        const SUCCESS_SOUND = new Audio("https://github.com/jesusvn1993mplvt3-ai/TejidoBalta/raw/refs/heads/main/Data/author.mp3");
 
-        const Icon = ({ name, size = 18, className }) => <i data-lucide={name} width={size} height={size} className={className}></i>;
+        const CloseButtonBalta = ({ onClick }) => (
+            <button onClick={onClick} className="btn-close-balta">
+                <span className="x-black-bg">X</span>
+                <img src="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png" className="balta-mini-logo" />
+            </button>
+        );
 
-        // --- COMPONENTE: TARJETA DE MÁQUINA (PANEL INFERIOR) ---
-        const MachineCard = ({ maquina, orders }) => {
-            const [is24Hours, setIs24Hours] = useState(true);
-            
-            // Detectar si hay orden de MAES en esta máquina
-            const hasMaesOrder = useMemo(() => {
-                return orders.some(o => o.cliente && o.cliente.toUpperCase().includes('MAES'));
-            }, [orders]);
+        const SmartImage = ({ modelo }) => {
+            const BASE = "https://raw.githubusercontent.com/sweaters-liliana/MAES26/refs/heads/main/IMAGENES/PAPELETAS/";
+            const [src, setSrc] = useState(`${BASE}${modelo}.png`);
+            return <img src={src} onError={() => setSrc(`${BASE}${modelo}.jpg`)} />;
+        };
 
-            const pendingPackages = useMemo(() => {
-                let pkgs = [];
-                orders.forEach(o => {
-                    const incomplete = o.progreso?.filter(p => !p.finished) || [];
-                    incomplete.forEach(p => {
-                        const pieceData = o.subPiecesData?.find(sp => sp.pieza === p.piezaNombre) || o;
-                        const timePerPiece = Number(pieceData.tiempo) || 0;
-                        // Pasamos el cliente para identificar paquete por paquete si es necesario
-                        pkgs.push({ 
-                            ...p, 
-                            parentOrderId: o.id, 
-                            orderCode: o.codigo, 
-                            partida: o.partida, 
-                            cliente: o.cliente,
-                            timeTotal: (p.cantidad * timePerPiece) 
-                        });
+        const ConsolidadorDrawer = ({ isOpen, onClose, items }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="drawer-container" onClick={onClose}>
+                    <div className="drawer-content flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-[#020617]">
+                            <h2 className="font-black text-blue-500 italic">VISTA PREVIA</h2>
+                            <CloseButtonBalta onClick={onClose} />
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {items.length === 0 ? <div className="text-center text-slate-500 font-bold mt-20">SIN REGISTROS</div> : items.map((item, i) => (
+                                <div key={i} className="preview-card">
+                                    <div className="preview-img"><SmartImage modelo={item.modelo} /></div>
+                                    <div className="p-2 flex flex-col justify-center overflow-hidden">
+                                        <span className="font-mono font-bold text-white text-xs truncate">{item.codigo_paquete || item.code}</span>
+                                        <span className="text-[10px] text-blue-400 font-black uppercase">{item.modelo}</span>
+                                        <span className="text-[9px] text-slate-400">Pqt: {item.paquete_indice}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ScannerModal = ({ isVisible, onClose, ordersCache }) => {
+            const [scans, setScans] = useState([]);
+            const [wait, setWait] = useState(0);
+            const [msg, setMsg] = useState("Listo para escanear");
+            const scansRef = useRef([]);
+            const qrRef = useRef(null);
+            const waitRef = useRef(0);
+
+            useEffect(() => { scansRef.current = scans; }, [scans]);
+            useEffect(() => { waitRef.current = wait; }, [wait]);
+
+            useEffect(() => {
+                let html5QrCode;
+                if (isVisible) {
+                    const timer = setTimeout(() => {
+                        const supportedFormats = [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13 ];
+                        html5QrCode = new Html5Qrcode("reader", { formatsToSupport: supportedFormats, verbose: false });
+                        qrRef.current = html5QrCode;
+                        
+                        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 300, height: 120 }, aspectRatio: 1.0 }, 
+                            (text) => {
+                                if (waitRef.current > 0) return;
+                                const rawCode = text.trim().toUpperCase();
+                                
+                                // --- LÓGICA DE GRUPOS MULTI-ORDEN ---
+                                if (rawCode.startsWith('GRP|')) {
+                                    try {
+                                        const parts = rawCode.split('|');
+                                        if (parts.length !== 4) throw new Error("Formato inválido");
+                                        const grpModelo = parts[1];
+                                        const grpPartida = parts[2];
+                                        const grpIndices = parts[3].split(',').map(s => parseInt(s.trim()));
+
+                                        // 1. Filtrar todas las órdenes que sean del mismo Modelo y Partida
+                                        const ordenesCandidatas = ordersCache.filter(o => o.codigo === grpModelo && (o.partida || 'SN') === grpPartida);
+                                        
+                                        if (ordenesCandidatas.length === 0) { setMsg(`❌ NO EXISTE ORDEN: ${grpModelo}`); return; }
+
+                                        let encontrados = [];
+                                        let yaEscaneados = [];
+
+                                        // 2. Buscar cada índice en el universo de órdenes candidatas
+                                        grpIndices.forEach(idxBuscado => {
+                                            let paqueteEncontrado = null;
+                                            let ordenDelPaquete = null;
+
+                                            // Buscar en todas las sub-órdenes hasta encontrar el paquete con ese número
+                                            for (let o of ordenesCandidatas) {
+                                                const pkg = o.progreso?.find(p => p.paqueteNum === idxBuscado);
+                                                if (pkg) { paqueteEncontrado = pkg; ordenDelPaquete = o; break; }
+                                            }
+
+                                            if (paqueteEncontrado && ordenDelPaquete) {
+                                                const codigoUnico = paqueteEncontrado.codigoUnico;
+                                                if (scansRef.current.some(s => s.code === codigoUnico)) {
+                                                    yaEscaneados.push(idxBuscado);
+                                                } else {
+                                                    encontrados.push({
+                                                        code: codigoUnico, codigo_paquete: codigoUnico,
+                                                        modelo: ordenDelPaquete.codigo, orderId: ordenDelPaquete.id,
+                                                        partida: ordenDelPaquete.partida || "S/N",
+                                                        paquete_indice: paqueteEncontrado.paqueteNum,
+                                                        paquete_total: ordenDelPaquete.progreso ? ordenDelPaquete.progreso.length : 0,
+                                                        es_grupo: true
+                                                    });
+                                                }
+                                            }
+                                        });
+
+                                        if (encontrados.length > 0) {
+                                            SUCCESS_SOUND.play().catch(e => {});
+                                            setScans(prev => [...encontrados, ...prev]);
+                                            setMsg(`✅ GRUPO OK (+${encontrados.length})`);
+                                            setWait(4);
+                                        } else if (yaEscaneados.length > 0) {
+                                            setMsg("⚠️ GRUPO YA REGISTRADO");
+                                        } else {
+                                            setMsg(`❌ PAQUETES NO HALLADOS`);
+                                        }
+                                    } catch (e) { console.error(e); setMsg("❌ ERROR LECTURA GRUPO"); }
+                                    return;
+                                }
+
+                                // --- LÓGICA INDIVIDUAL ---
+                                if (scansRef.current.some(s => s.code === rawCode)) { setMsg("⚠️ YA ESCANEADO"); return; }
+                                let found = null;
+                                ordersCache.forEach(o => {
+                                    const p = o.progreso?.find(pkg => pkg.codigoUnico === rawCode);
+                                    if (p) {
+                                        found = { 
+                                            code: rawCode, codigo_paquete: rawCode, modelo: o.codigo, orderId: o.id,
+                                            partida: o.partida || "S/N", paquete_indice: p.paqueteNum || 0,
+                                            paquete_total: o.progreso ? o.progreso.length : 0
+                                        };
+                                    }
+                                });
+
+                                if (found) {
+                                    SUCCESS_SOUND.play().catch(e => {});
+                                    setScans(prev => [found, ...prev]);
+                                    setMsg(`✅ ${found.modelo}`);
+                                    setWait(3);
+                                } else { setMsg("❌ NO ENCONTRADO"); }
+                            },
+                            (errorMessage) => { }
+                        ).catch(err => { setMsg("Error Cámara"); });
+                    }, 100);
+                    return () => clearTimeout(timer);
+                }
+                return () => { if (qrRef.current) qrRef.current.stop().catch(e=>{}).then(()=>qrRef.current.clear()); };
+            }, [isVisible]);
+
+            useEffect(() => {
+                if (wait > 0) { const t = setTimeout(() => setWait(prev => prev - 1), 1000); return () => clearTimeout(t); }
+            }, [wait]);
+
+            const confirm = async () => {
+                if (scans.length === 0) { onClose(); return; }
+                const b = db.batch();
+                scans.forEach(s => {
+                    const ref = db.collection('registro_produccion').doc();
+                    b.set(ref, { 
+                        ...s, fecha: firebase.firestore.FieldValue.serverTimestamp(), 
+                        tejedor: "Balta", device: navigator.userAgent, tipo_scan: s.es_grupo ? "GRUPO" : "BARCODE" 
                     });
                 });
-                return pkgs; 
-            }, [orders]);
-
-            const updateObs = async (pkgId, parentOrderId, newVal) => {
-                const order = orders.find(o => o.id === parentOrderId);
-                if(!order) return;
-                const newProgreso = order.progreso.map(p => p.id === pkgId ? {...p, observaciones: newVal} : p);
-                await db.collection('orders').doc(String(parentOrderId)).update({progreso: newProgreso});
+                await b.commit();
+                setScans([]); onClose();
             };
 
-            const totalMinutesLeft = pendingPackages.reduce((sum, p) => sum + p.timeTotal, 0);
-            const hoursPerDay = is24Hours ? 24 : 12;
-            const daysLeft = totalMinutesLeft > 0 ? (totalMinutesLeft / 60 / hoursPerDay).toFixed(1) : 0;
-            const hoursLeft = (totalMinutesLeft / 60).toFixed(1);
+            if (!isVisible) return null;
 
             return (
-                <div className={`machine-card shadow-lg ${hasMaesOrder ? 'maes-machine' : 'border-slate-600'}`}>
-                    {hasMaesOrder && (
-                        <div className="absolute top-0 right-0 bg-pink-600 text-white text-[9px] font-black px-2 py-0.5 rounded-bl-lg z-10">
-                            MAES
-                        </div>
-                    )}
-                    <div className="flex justify-between items-center border-b border-slate-500 pb-2 mb-2">
-                        <div>
-                            <div className="text-xs text-slate-400 font-bold uppercase">Máquina</div>
-                            <div className={`text-3xl font-black machine-number ${hasMaesOrder ? '' : 'text-yellow-400'}`}>#{maquina}</div>
-                        </div>
-                        <div className="text-right">
-                            <button onClick={()=>setIs24Hours(!is24Hours)} className="bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded text-[10px] font-bold mb-1 border border-slate-500 block w-full">
-                                {is24Hours ? '24 HORAS' : '12 HORAS'}
-                            </button>
-                            <div className="text-xs font-bold text-green-400">{daysLeft} días ({hoursLeft}h)</div>
-                        </div>
+                <div className="fixed inset-0 z-[700] bg-[#020617] flex flex-col p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="font-black text-blue-500 text-xl">Lector Universal</h2>
+                        <CloseButtonBalta onClick={onClose} />
                     </div>
-                    <div className="pkg-list space-y-1">
-                        {pendingPackages.length === 0 && <div className="text-center text-slate-500 text-xs py-4">Máquina Libre</div>}
-                        {pendingPackages.map((p, i) => {
-                            const isMaesPkg = p.cliente && p.cliente.toUpperCase().includes('MAES');
-                            return (
-                                <div key={i} className={`p-2 rounded flex gap-2 items-center text-xs border ${isMaesPkg ? 'bg-pink-900/40 border-pink-500' : 'bg-slate-800 border-slate-700'}`}>
-                                    <div className="font-black text-white text-lg w-10 text-right shrink-0">{p.cantidad}</div>
-                                    <div className="w-24 shrink-0 overflow-hidden">
-                                        <div className="font-bold text-slate-300 truncate text-[10px]" title={p.piezaNombre}>{p.piezaNombre}</div>
-                                        <div className={`text-[9px] font-black truncate ${isMaesPkg ? 'text-pink-300' : 'text-yellow-500'}`}>{p.partida}</div>
-                                    </div>
-                                    <div className="flex-grow pl-2 border-l border-slate-600">
-                                        <input 
-                                            className="obs-input placeholder-slate-600" 
-                                            placeholder="Comentar..." 
-                                            defaultValue={p.observaciones || ''} 
-                                            onBlur={(e) => updateObs(p.id, p.parentOrderId, e.target.value)} 
-                                            onKeyDown={(e) => { if(e.key === 'Enter') e.target.blur(); }}
-                                        />
-                                    </div>
-                                </div>
-                            );
-                        })}
+                    <div className="scan-wrapper mb-4 shadow-lg shadow-blue-900/20">
+                        <div id="reader"></div>
+                        {wait > 0 && <div className="wait-overlay animate-pulse"><span>{wait}</span></div>}
+                        <div className="absolute top-1/2 left-[10%] right-[10%] h-0.5 bg-red-500/50 pointer-events-none"></div>
                     </div>
-                </div>
-            );
-        };
-
-        const DashboardBottom = ({ activeOrders }) => {
-            const machineGroups = useMemo(() => {
-                const groups = {};
-                activeOrders.forEach(o => { if(!groups[o.maquina]) groups[o.maquina] = []; groups[o.maquina].push(o); });
-                return Object.keys(groups).sort((a,b) => parseInt(a)-parseInt(b)).map(k => ({ id: k, orders: groups[k] }));
-            }, [activeOrders]);
-
-            return (
-                <div className="bottom-pane shadow-inner">
-                    {machineGroups.map(g => <MachineCard key={g.id} maquina={g.id} orders={g.orders} />)}
-                    {machineGroups.length === 0 && <div className="text-slate-500 w-full flex items-center justify-center font-bold">No hay producción activa</div>}
-                </div>
-            );
-        };
-
-        const SmartImage = ({ repoUrls, codigo, className }) => {
-             const [imgSrc, setImgSrc] = useState(null);
-            const [attempt, setAttempt] = useState({ urlIndex: 0, extension: 'jpg' });
-            useEffect(() => {
-                if (!repoUrls || !repoUrls.length || !codigo) { setImgSrc(null); return; }
-                setAttempt({ urlIndex: 0, extension: 'jpg' });
-                const base = repoUrls[0].endsWith('/') ? repoUrls[0] : repoUrls[0] + '/';
-                setImgSrc(`${base}${codigo}.jpg`);
-            }, [repoUrls, codigo]);
-
-            const handleError = () => {
-                const { urlIndex, extension } = attempt;
-                if (extension === 'jpg') {
-                    const base = repoUrls[urlIndex].endsWith('/') ? repoUrls[urlIndex] : repoUrls[urlIndex] + '/';
-                    setImgSrc(`${base}${codigo}.png`);
-                    setAttempt({ ...attempt, extension: 'png' });
-                } else if (urlIndex < repoUrls.length - 1) {
-                    const nextIdx = urlIndex + 1;
-                    const base = repoUrls[nextIdx].endsWith('/') ? repoUrls[nextIdx] : repoUrls[nextIdx] + '/';
-                    setImgSrc(`${base}${codigo}.jpg`);
-                    setAttempt({ urlIndex: nextIdx, extension: 'jpg' });
-                } else {
-                    setAttempt({ ...attempt, extension: 'fail' });
-                }
-            };
-            if (attempt.extension === 'fail' || !imgSrc) return <div className={`bg-slate-100 flex flex-col items-center justify-center text-slate-300 ${className}`}><Icon name="image-off" size={32} className="mb-2"/><span className="text-[10px] text-center px-2">Sin img</span></div>;
-            return <img src={imgSrc} onError={handleError} className={className} />;
-        };
-
-        // --- ORDER VIEW (SOLO LECTURA / DETALLE) ---
-        const OrderView = ({ order, config, onBack }) => { 
-            const minutosPorPrenda = order.subPiecesData.reduce((acc, curr) => acc + (Number(curr.tiempo) || 0), 0);
-            const piezasPorHora = minutosPorPrenda > 0 ? (60 / minutosPorPrenda).toFixed(0) : 0;
-            const piezasPorTurno = minutosPorPrenda > 0 ? ((60 / minutosPorPrenda) * 12).toFixed(0) : 0;
-            const isMaes = order.cliente && order.cliente.toUpperCase().includes('MAES');
-
-            return (
-                <div className="bg-white min-h-screen relative">
-                    <div className="no-print p-4 border-b flex justify-between bg-slate-50 sticky top-0 z-10 shadow-sm">
-                        <button onClick={onBack} className="flex items-center gap-2 text-slate-600 font-bold hover:text-slate-800"><Icon name="arrow-left"/> Volver al Tablero</button>
-                        <div className="flex gap-2 items-center">
-                             {isMaes && <span className="bg-pink-100 text-pink-700 font-bold px-3 py-1 rounded-full text-xs border border-pink-300 mr-4">ORDEN MAES</span>}
-                             <button onClick={() => window.print()} className="bg-slate-900 text-white px-3 py-1 rounded font-bold text-xs flex items-center gap-1 hover:bg-slate-700">
-                                 <Icon name="printer"/> IMPRIMIR VISTA
-                             </button>
-                        </div>
-                    </div>
-                    
-                    <div className="p-8 print:p-0">
-                        {order.status === 'ARCHIVADO' && <div className="bg-orange-100 border-l-4 border-orange-500 text-orange-700 p-4 mb-4 font-bold text-center no-print">ESTA ORDEN ESTÁ EN EL HISTORIAL</div>}
-
-                        <div className="print-visible-wrapper">
-                             <div className="flex justify-between items-start mb-4 border-b-4 border-black pb-2">
-                                <div className="w-8/12">
-                                    <h1 className="font-black uppercase tracking-tighter text-3xl">{order.cliente}</h1>
-                                    <div className="flex gap-6 items-baseline header-info mt-2">
-                                        <div className="uppercase font-bold text-lg">PARTIDA: {order.partida}</div>
-                                        <div className="text-slate-700 uppercase font-bold text-lg">MOD: {order.codigo}</div>
-                                    </div>
+                    <div className="text-center py-2 mb-2 bg-slate-900/50 rounded text-sm font-black text-white border border-slate-700">{msg}</div>
+                    <div className="flex-1 overflow-y-auto space-y-2 mb-4 pr-1">
+                        {scans.map((s, idx) => (
+                            <div key={idx} className="bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center text-sm shadow-sm">
+                                <div>
+                                    <span className="block font-mono text-slate-300 text-xs">{s.code}</span>
+                                    <span className="text-[10px] text-slate-500">Pqt: {s.paquete_indice}</span>
                                 </div>
-                                <div className="w-3/12 text-right">
-                                    <div className="bg-black text-white text-center font-bold text-sm p-1">MÁQUINA</div>
-                                    <div className="text-6xl font-black text-center">{order.maquina}</div>
-                                </div>
-                             </div>
-                            
-                             <div className="flex gap-4 flex-col md:flex-row">
-                                <div className="w-full md:w-7/12 flex flex-col gap-4">
-                                    <div className="border border-slate-300 rounded overflow-hidden">
-                                        <table className="w-full">
-                                            <thead className="bg-slate-100 border-b">
-                                                <tr><th className="text-left p-2">PIEZA</th><th className="w-20 p-2 text-center">TALLA</th><th className="w-20 p-2 text-center">TOTAL</th></tr>
-                                            </thead>
-                                            <tbody>
-                                                {order.subPiecesData.map((p,i)=>(
-                                                    <tr key={i} className="border-b last:border-0">
-                                                        <td className="truncate p-2 font-bold">{p.pieza}</td>
-                                                        <td className="text-center p-2">{p.talla}</td>
-                                                        <td className="text-center font-black p-2">{p.totalPedido}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    
-                                    <div className="border border-slate-300 rounded overflow-hidden">
-                                        <table className="w-full">
-                                            <thead className="bg-slate-800 text-white">
-                                                <tr>
-                                                    <th colSpan="3" className="py-1 text-sm text-center">ENHEBRADO DE MÁQUINA</th>
-                                                </tr>
-                                                <tr className="bg-slate-100 text-slate-800 text-xs">
-                                                    <th className="w-12 p-1 border-b">#</th>
-                                                    <th className="text-left p-1 border-b">Material</th>
-                                                    <th className="w-16 p-1 border-b text-center">%</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {order.threading && order.threading.map((row, i) => (
-                                                    <tr key={i} className="border-b last:border-0">
-                                                        <td className="text-center font-bold p-1 bg-slate-50">{row.guia}</td>
-                                                        <td className="truncate p-1">{row.material}</td>
-                                                        <td className="text-center font-bold p-1">{row.porcentaje}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <div className="flex gap-2">
-                                        <div className="w-1/2 border-2 border-slate-300 rounded bg-slate-50 flex flex-col justify-center items-center p-2">
-                                            <span className="text-xs font-bold uppercase w-full text-center border-b border-slate-300 mb-1 text-slate-500">PZS / HORA (EST)</span>
-                                            <span className="text-2xl font-black text-slate-700">{piezasPorHora}</span>
-                                        </div>
-                                        <div className="w-1/2 border-2 border-slate-300 rounded bg-slate-50 flex flex-col justify-center items-center p-2">
-                                            <span className="text-xs font-bold uppercase w-full text-center border-b border-slate-300 mb-1 text-slate-500">PZS / 12H (EST)</span>
-                                            <span className="text-2xl font-black text-slate-700">{piezasPorTurno}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="w-full md:w-5/12 border-2 border-slate-200 rounded flex items-center justify-center relative bg-white overflow-hidden p-2 min-h-[300px]">
-                                     <SmartImage repoUrls={config.repoUrls} codigo={order.codigo} className="max-h-80 w-full object-contain"/>
-                                </div>
+                                <span className="text-blue-400 font-black">{s.modelo}</span>
                             </div>
-                        
-                            <div className="mt-8">
-                                <h3 className="font-bold text-lg mb-2 border-b-2 border-slate-800 pb-1">Progreso de Paquetes</h3>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm text-left border-collapse">
-                                        <thead>
-                                            <tr className="bg-slate-200">
-                                                <th className="p-2 border">#</th>
-                                                <th className="p-2 border">CÓDIGO ÚNICO</th> 
-                                                <th className="p-2 border text-center">CANT</th>
-                                                <th className="p-2 border">ESTADO</th>
-                                                <th className="p-2 border">TEJEDOR</th>
-                                                <th className="p-2 border">OBSERVACIONES</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {order.progreso?.map((p, idx) => (
-                                                <tr key={p.id} className={p.finished ? "bg-green-50" : ""}>
-                                                    <td className="text-center font-bold p-2 border">{idx+1}</td>
-                                                    <td className="p-2 font-mono border text-xs" title={p.codigoUnico}>{p.codigoUnico}</td>
-                                                    <td className="text-center font-bold p-2 border">{p.cantidad}</td>
-                                                    <td className="p-2 border text-xs font-bold">
-                                                        {p.finished 
-                                                            ? <span className="text-green-600">TERMINADO {p.fecha && `(${p.fecha})`}</span> 
-                                                            : <span className="text-slate-400">PENDIENTE</span>
-                                                        }
-                                                    </td>
-                                                    <td className="p-2 border">{p.tejedor || '-'}</td>
-                                                    <td className="p-2 border italic text-slate-500 text-xs">{p.observaciones || ''}</td> 
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                             </div>
-                        </div>
+                        ))}
                     </div>
+                    <button onClick={confirm} className="w-full py-4 bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all rounded-xl font-black uppercase text-sm shadow-lg shadow-blue-600/30 text-white tracking-widest">
+                        {scans.length > 0 ? `Confirmar (${scans.length})` : "Cerrar"}
+                    </button>
                 </div>
             );
         };
 
         const App = () => {
-            const [view, setView] = useState('dashboard');
             const [orders, setOrders] = useState([]);
-            const [config, setConfig] = useState({});
-            const [selectedOrder, setSelectedOrder] = useState(null);
-            const [viewMode, setViewMode] = useState('active'); 
-            
-            useEffect(() => {
-                const u1 = db.collection('orders').onSnapshot(s => setOrders(s.docs.map(d=>d.data())));
-                const u2 = db.collection('settings').doc('config').onSnapshot(d => setConfig(d.data() || {}));
-                setTimeout(()=>lucide.createIcons(), 500);
-                return () => { u1(); u2(); };
-            }, []);
-            useEffect(()=>lucide.createIcons(), [view, orders, viewMode]);
+            const [recent, setRecent] = useState([]);
+            const [showScan, setShowScan] = useState(false);
+            const [showCons, setShowCons] = useState(false);
 
-            // --- AGRUPACIÓN ---
-            const displayedGroups = useMemo(() => {
-                const filtered = viewMode === 'active' 
-                    ? orders.filter(o => o.status !== 'ARCHIVADO') 
-                    : orders.filter(o => o.status === 'ARCHIVADO');
-                const groups = {};
-                filtered.forEach(o => {
-                    const key = o.partida || 'SIN_PARTIDA';
-                    if (!groups[key]) { groups[key] = { partida: key, cliente: o.cliente, codigo: o.codigo, orders: [] }; }
-                    groups[key].orders.push(o);
-                });
-                return Object.values(groups).sort((a,b) => b.partida.localeCompare(a.partida));
-            }, [orders, viewMode]);
+            useEffect(() => {
+                const unsubOrders = db.collection('orders').where('status','!=','ARCHIVADO').onSnapshot(s => setOrders(s.docs.map(d => ({...d.data(), id: d.id}))));
+                const unsubRecent = db.collection('registro_produccion').orderBy('fecha','desc').limit(20).onSnapshot(s => setRecent(s.docs.map(d => d.data())));
+                return () => { unsubOrders(); unsubRecent(); }
+            }, []);
 
             return (
-                <div className="h-screen bg-slate-100 overflow-hidden relative">
-                    
-                    {view === 'detail' && selectedOrder && <div className="absolute inset-0 z-40 bg-white overflow-y-auto print-visible-wrapper"><OrderView order={orders.find(o=>o.id===selectedOrder.id) || selectedOrder} config={config} onBack={()=>setView('dashboard')} /></div>}
-
-                    <div className="dashboard-grid">
-                        <div className="top-pane bg-slate-100 p-4">
-                            <div className="flex justify-between items-center mb-4">
-                                <h1 className="text-2xl font-black text-slate-800 flex gap-2 items-center">
-                                    <Icon name="eye"/> 
-                                    <span>VISTA AMÉRICA</span>
-                                    <span className="text-xs bg-pink-600 text-white px-2 py-1 rounded ml-2 font-bold shadow-sm">MAES</span>
-                                </h1>
-                                <div className="flex gap-2 items-center">
-                                    <button onClick={()=>setViewMode(viewMode === 'active' ? 'history' : 'active')} className={`px-4 py-2 rounded font-bold shadow flex items-center gap-2 text-xs transition ${viewMode === 'active' ? 'bg-indigo-600 hover:bg-indigo-700 text-white' : 'bg-slate-700 text-white'}`}>
-                                        <Icon name={viewMode === 'active' ? 'history' : 'activity'}/> 
-                                        {viewMode === 'active' ? 'VER HISTORIAL' : 'VER PLANTA'}
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
-                                {displayedGroups.map(group => {
-                                    const isMaesGroup = group.cliente && group.cliente.toUpperCase().includes('MAES');
-                                    return (
-                                        <div key={group.partida} className={`bg-white rounded-lg shadow-md overflow-hidden flex flex-col ${isMaesGroup ? 'maes-highlight' : 'border-t-4 border-slate-400'}`}>
-                                            <div className="bg-slate-50 p-3 border-b flex justify-between items-start">
-                                                <div>
-                                                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wide">PARTIDA</div>
-                                                    <div className="text-xl font-black text-slate-800">{group.partida}</div>
-                                                    <div className="text-sm font-bold text-indigo-700 mt-1">{group.codigo}</div>
-                                                </div>
-                                                <div className="text-right">
-                                                     <div className={`text-[10px] font-bold px-2 py-1 rounded truncate max-w-[100px] ${isMaesGroup ? 'bg-pink-600 text-white shadow-sm' : 'bg-slate-200 text-slate-600'}`}>{group.cliente}</div>
-                                                </div>
-                                            </div>
-                                            <div className="flex-grow p-2 space-y-2 bg-slate-100/50">
-                                                {group.orders.map(o => {
-                                                    const pct = Math.round((o.progreso.filter(p=>p.finished).length / o.progreso.length)*100);
-                                                    const piezasStr = o.subPiecesData.map(sp => sp.pieza).join(' + ');
-                                                    return (
-                                                        <div key={o.id} onClick={()=>{setSelectedOrder(o); setView('detail')}} className="bg-white p-2 rounded border border-slate-200 hover:border-pink-400 hover:shadow-md cursor-pointer transition-all flex items-center gap-3 group">
-                                                            <div className={`flex flex-col items-center justify-center text-white w-12 h-12 rounded shrink-0 ${isMaesGroup ? 'bg-pink-600' : 'bg-slate-800'}`}>
-                                                                <span className="text-[9px] font-bold opacity-70">MQ</span>
-                                                                <span className="text-lg font-black leading-none">{o.maquina}</span>
-                                                            </div>
-                                                            <div className="flex-grow overflow-hidden">
-                                                                <div className="font-bold text-sm text-slate-700 truncate group-hover:text-pink-600 transition-colors" title={piezasStr}>{piezasStr}</div>
-                                                                <div className="flex justify-between items-end mt-1">
-                                                                    <div className="text-[10px] text-slate-400 font-bold">{o.totalPedido} Pzs</div>
-                                                                    <div className="text-[10px] font-bold text-green-600">{pct}%</div>
-                                                                </div>
-                                                                <div className="w-full bg-slate-200 h-1.5 rounded-full mt-1 overflow-hidden">
-                                                                    <div className={`h-full ${o.status === 'ARCHIVADO' ? 'bg-slate-400' : 'bg-green-500'}`} style={{width:`${pct}%`}}></div>
-                                                                </div>
-                                                            </div>
-                                                            <Icon name="eye" size={16} className="text-slate-300 group-hover:text-pink-500 shrink-0"/>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                {displayedGroups.length === 0 && <div className="col-span-full text-center text-slate-400 py-10 font-bold">No hay órdenes en esta vista.</div>}
-                            </div>
-                        </div>
-                        
-                        {viewMode === 'active' && <DashboardBottom activeOrders={orders.filter(o => o.status !== 'ARCHIVADO')} />}
-                        {viewMode === 'history' && <div className="bg-slate-800 text-white flex items-center justify-center p-10 font-bold text-xl opacity-50">MODO HISTORIAL</div>}
+                <div className="h-screen w-screen flex flex-col bg-[#020617]">
+                    <div className="fixed-header-container">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/CJNG_Logo.svg/1024px-CJNG_Logo.svg.png" className="header-logo-img" />
                     </div>
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 gap-12">
+                        <div className="text-center animate-fade-in">
+                            <img src="https://raw.githubusercontent.com/jesusvn1993mplvt3-ai/Planificador/refs/heads/main/Balta.png" className="w-36 h-36 rounded-full mx-auto mb-6 shadow-2xl shadow-blue-900/50 border-4 border-slate-800" />
+                            <h1 className="text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-white">BALTA SCAN</h1>
+                            <p className="text-blue-500 font-bold text-xs tracking-widest mt-2">MODO UNIVERSAL</p>
+                        </div>
+                        <div onClick={() => setShowScan(true)} className="w-full max-w-xs py-12 bg-gradient-to-b from-slate-800 to-slate-900 border border-slate-700 rounded-[2.5rem] flex flex-col items-center gap-4 cursor-pointer hover:border-blue-500 transition-colors shadow-2xl active:scale-95">
+                            <div className="bg-blue-600 p-5 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]">
+                                <span className="font-black text-3xl text-white">|||</span>
+                            </div>
+                            <span className="font-black text-xs uppercase tracking-[0.2em] text-blue-200">Escanear</span>
+                        </div>
+                    </div>
+                    <div className="p-6 flex justify-end bg-slate-900/80 backdrop-blur border-t border-slate-800 safe-area-bottom">
+                        <div className="relative cursor-pointer group" onClick={() => setShowCons(true)}>
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/CJNG_Logo.svg/1024px-CJNG_Logo.svg.png" className="w-16 h-16 object-contain filter drop-shadow-[0_0_8px_rgba(255,0,0,0.5)] group-hover:scale-110 transition-transform" />
+                            {recent.length > 0 && <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] w-6 h-6 flex items-center justify-center rounded-full border-2 border-[#020617] font-black animate-bounce">{recent.length}</div>}
+                        </div>
+                    </div>
+                    <ScannerModal isVisible={showScan} onClose={() => setShowScan(false)} ordersCache={orders} />
+                    <ConsolidadorDrawer isOpen={showCons} onClose={() => setShowCons(false)} items={recent} />
                 </div>
             );
         };
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
