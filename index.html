@@ -2,74 +2,58 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auditoría Visual - Cirineo Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Viry Control - Producción</title>
+    
+    <meta name="theme-color" content="#fdf2f8"> <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3556/3556696.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@700&family=Plus+Jakarta+Sans:wght@400;700;800&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;700&family=Montserrat:wght@400;900&display=swap" rel="stylesheet">
 
     <style>
-        body { 
-            background: radial-gradient(circle at top left, #1e293b, #020617); 
-            color: white; 
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            min-height: 100vh;
-        }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+        /* Tipografías Femeninas */
+        body { margin: 0; overflow: hidden; transition: background 0.5s ease; font-family: 'Quicksand', sans-serif; }
+        .font-hand { font-family: 'Dancing Script', cursive; }
+        .font-bold-modern { font-family: 'Montserrat', sans-serif; }
         
-        /* --- ESTILOS DE LA PAPELETA (Importados de papeletas.html) --- */
-        .label-layout {
-            width: 100%;
-            height: 100%; /* Ojo con esto en flex containers */
-            display: flex;
-            border: 1px solid #ddd;
-            padding: 0.25in;
-            box-sizing: border-box;
-            background: white;
-            color: black;
-            font-family: 'Roboto Condensed', sans-serif;
-            page-break-inside: avoid;
-        }
-
-        .col-img { width: 25%; display: flex; align-items: center; justify-content: center; border-right: 2px solid #000; padding-right: 5px; overflow: hidden; }
-        .col-img img { width: 100%; height: 100%; object-fit: contain; }
-        .col-data { width: 60%; display: flex; flex-direction: column; border-right: 2px solid #000; }
-        .col-barcode { width: 15%; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
-
-        .lbl-row { display: flex; border-bottom: 2px solid #000; width: 100%; }
-        .lbl-row:last-child { border-bottom: none; }
-        .lbl-col { border-right: 2px solid #000; padding: 2px 4px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-        .lbl-col:last-child { border-right: none; }
-        
-        .lbl-title { font-size: 10px; font-weight: 700; color: #555; text-transform: uppercase; line-height: 1; margin-bottom: 1px; }
-        .lbl-big { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 32px; line-height: 0.9; color: #000; }
-        .lbl-medium { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 20px; line-height: 1; color: #000; }
-        .lbl-std { font-size: 14px; font-weight: 700; color: #000; line-height: 1.1; }
-
-        /* Estilos PDF Container */
-        .pdf-page-container {
-            width: 8.5in; /* Carta */
-            background: white;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            padding: 20px;
+        /* Efectos Visuales */
+        .glass-pink {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
         
-        .papeleta-wrapper {
-            width: 100%;
-            height: 4in; /* Altura fija para la papeleta */
-            border: 1px dashed #ccc;
+        .neon-glow {
+            text-shadow: 0 0 5px #ff77bc, 0 0 10px #ff77bc, 0 0 20px #ff00de;
+        }
+
+        .scan-wrapper { width: 100%; height: 280px; border-radius: 24px; position: relative; overflow: hidden; background: #000; }
+        #reader video { object-fit: cover; width: 100% !important; height: 100% !important; border-radius: 20px; }
+        
+        /* Animación de carga */
+        @keyframes pulse-pink {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
+        }
+        .pulse-btn { animation: pulse-pink 2s infinite; }
+
+        /* Estructura Split */
+        .split-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        .split-section { flex: 1; position: relative; overflow: hidden; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; }
+        .split-section:active { transform: scale(0.98); }
+        
+        @media (min-width: 768px) {
+            .split-container { flex-direction: row; }
         }
     </style>
 </head>
@@ -78,347 +62,463 @@
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-        
-        const firebaseConfig = { apiKey: "AIzaSyCngQL1pdqghv2vbjkPycT1Xf0C46f7jYs", authDomain: "cirineo-cec21.firebaseapp.com", projectId: "cirineo-cec21", storageBucket: "cirineo-cec21.firebasestorage.app", messagingSenderId: "620210618284", appId: "1:620210618284:web:482bab9bf74650fff18409" };
+
+        // --- CONFIGURACIÓN FIREBASE (Misma configuración) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCngQL1pdqghv2vbjkPycT1Xf0C46f7jYs",
+            authDomain: "cirineo-cec21.firebaseapp.com",
+            projectId: "cirineo-cec21",
+            storageBucket: "cirineo-cec21.firebasestorage.app",
+            messagingSenderId: "620210618284",
+            appId: "1:620210618284:web:482bab9bf74650fff18409"
+        };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        const Icon = ({ name, size=20, className="" }) => {
+        // --- SONIDOS ---
+        const SOUND_SUCCESS = new Audio("https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"); // Sonido suave de "campanita"
+        const SOUND_ERROR = new Audio("https://assets.mixkit.co/active_storage/sfx/944/944-preview.mp3"); // Sonido de error suave
+
+        // ==========================================
+        // COMPONENTES UTILITARIOS
+        // ==========================================
+        const Icon = ({ name, size = 24, className }) => {
             const r = useRef(null);
-            useEffect(() => { if (r.current && lucide.icons[name]) r.current.innerHTML = lucide.icons[name].toSvg({ width: size, height: size }); }, [name, size]);
+            useEffect(() => { 
+                if (r.current && lucide.icons[name]) 
+                    r.current.innerHTML = lucide.icons[name].toSvg({ width: size, height: size }); 
+            }, [name, size]);
             return <span ref={r} className={`inline-flex items-center justify-center ${className}`}/>;
         };
 
-        // --- COMPONENTE VISUAL DE LA PAPELETA (Traído de papeletas.html) ---
-        const ProductionLabel = ({ labelData }) => {
-            const svgRef = useRef(null);
-            const order = labelData; 
+        const CloseButton = ({ onClick, dark = false }) => (
+            <button onClick={onClick} className={`relative w-10 h-10 flex items-center justify-center rounded-full border z-50 transition-all ${dark ? 'bg-black/20 border-white/20 text-white' : 'bg-pink-100 border-pink-300 text-pink-600'}`}>
+                <Icon name="x" size={20} />
+            </button>
+        );
+
+        // ==========================================
+        // MODO 1: INDIVIDUAL (ESTILO SOFT)
+        // ==========================================
+        const IndividualMode = ({ onExit }) => {
+            const [orders, setOrders] = useState([]);
+            const [showScan, setShowScan] = useState(false);
+            const [scans, setScans] = useState([]);
+            const [msg, setMsg] = useState("Escanea una prenda");
+            const [loading, setLoading] = useState(false);
             
-            // Lógica para encontrar subpiezas (talla, peso)
-            const subPiece = order.subPiecesData ? order.subPiecesData.find(sp => sp.pieza === order.piezaNombre) : (order.subPiecesData?.[0] || {});
-            
-            // Barcode
-            const barcodeValue = order.packageCode || order.kitId; // Fallback al kit ID si no hay codigo de paquete unico
+            const scansRef = useRef([]);
+            const qrRef = useRef(null);
 
-            // Cálculos
-            const tiempo = parseFloat(subPiece?.tiempo);
-            const hours = 12; // Estandar auditoria
-            const pzas1hr = tiempo > 0 ? Math.round(60 / tiempo) : '-'; 
-            const pzasShift = tiempo > 0 ? Math.round((hours * 60) / tiempo) : '-'; 
+            // Cargar Órdenes activas
+            useEffect(() => {
+                const unsub = db.collection('orders').where('status','!=','ARCHIVADO').onSnapshot(s => {
+                    setOrders(s.docs.map(d => ({...d.data(), id: d.id})));
+                });
+                return () => unsub();
+            }, []);
 
-            // Limpieza nombre
-            const rawPieza = order.piezaNombre || 'ESTANDAR';
-            const piezaVisual = rawPieza.split(' ')[0]; 
-
-            // Tamaño fuente dinamico
-            let piezaFontSize = '28px';
-            if (piezaVisual.length <= 6) piezaFontSize = '64px';
-            else if (piezaVisual.length <= 10) piezaFontSize = '52px';
-            else piezaFontSize = '38px';
-
-            // Imagen (Usando la lógica de GitHub del index original para simplificar, pero dentro del layout nuevo)
-            const getImageUrl = (modelo) => `https://raw.githubusercontent.com/sweaters-liliana/MAES2O26/refs/heads/main/IMAGENES/${modelo}.png`;
+            useEffect(() => { scansRef.current = scans; }, [scans]);
 
             useEffect(() => {
-                if (svgRef.current && barcodeValue) {
-                    try {
-                        JsBarcode(svgRef.current, barcodeValue, { 
-                            format: "CODE128", lineColor: "#000", width: 1.6, height: 55, displayValue: false, margin: 3
-                        });
-                    } catch (e) { console.error("Error barcode", e); }
+                let html5QrCode;
+                if (showScan) {
+                    setTimeout(() => {
+                        html5QrCode = new Html5Qrcode("reader-std", { formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_39], verbose: false });
+                        qrRef.current = html5QrCode;
+                        
+                        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 280, height: 100 }, aspectRatio: 1.0 }, 
+                            async (text) => {
+                                if (loading) return;
+                                const code = text.trim().toUpperCase();
+                                
+                                // 1. Chequeo Local (Sesión actual)
+                                if (scansRef.current.some(s => s.code === code)) { return; }
+
+                                setLoading(true);
+                                html5QrCode.pause(); // Pausar cámara mientras verificamos DB
+
+                                // 2. CHEQUEO GLOBAL EN BASE DE DATOS (REGLA DE ORO)
+                                try {
+                                    const dupCheck = await db.collection('registro_produccion').where('codigo_paquete', '==', code).limit(1).get();
+                                    
+                                    if (!dupCheck.empty) {
+                                        const culp = dupCheck.docs[0].data();
+                                        SOUND_ERROR.play();
+                                        setMsg(`⛔ YA ESCANEADO POR: ${culp.tejedor || 'Desconocido'}`);
+                                        setTimeout(() => { 
+                                            setMsg("Escanea una prenda"); 
+                                            html5QrCode.resume(); 
+                                            setLoading(false); 
+                                        }, 3000);
+                                        return;
+                                    }
+
+                                    // 3. Buscar en Órdenes
+                                    let found = null;
+                                    orders.forEach(o => {
+                                        const p = o.progreso?.find(pkg => pkg.codigoUnico === code);
+                                        if (p) found = { 
+                                            code: code, codigo_paquete: code, modelo: o.codigo, 
+                                            orderId: o.id, partida: o.partida || "S/N", 
+                                            paquete_indice: p.paqueteNum || 0, paquete_total: o.progreso ? o.progreso.length : 0,
+                                            maquina: p.maquina || '?'
+                                        };
+                                    });
+
+                                    if (found) {
+                                        SOUND_SUCCESS.play();
+                                        setScans(prev => [found, ...prev]);
+                                        setMsg(`🌸 ${found.modelo} Agregado`);
+                                        setTimeout(() => {
+                                            setMsg("Escanea una prenda");
+                                            html5QrCode.resume();
+                                            setLoading(false);
+                                        }, 1500);
+                                    } else {
+                                        SOUND_ERROR.play();
+                                        setMsg("❌ No encontrado en pedidos activos");
+                                        setTimeout(() => {
+                                            setMsg("Escanea una prenda");
+                                            html5QrCode.resume();
+                                            setLoading(false);
+                                        }, 2000);
+                                    }
+
+                                } catch (e) {
+                                    console.error(e);
+                                    setMsg("Error de conexión");
+                                    html5QrCode.resume();
+                                    setLoading(false);
+                                }
+                            },
+                            () => {}
+                        ).catch(err => setMsg("Error Cámara"));
+                    }, 100);
                 }
-            }, [barcodeValue]);
+                return () => {
+                    if (qrRef.current && qrRef.current.isScanning) {
+                        qrRef.current.stop().then(() => qrRef.current.clear());
+                    }
+                };
+            }, [showScan, orders]);
+
+            const confirmBatch = async () => {
+                if (scans.length === 0) { setShowScan(false); return; }
+                const b = db.batch();
+                scans.forEach(s => {
+                    const ref = db.collection('registro_produccion').doc();
+                    b.set(ref, { 
+                        ...s, 
+                        fecha: firebase.firestore.FieldValue.serverTimestamp(), 
+                        tejedor: "Viry",  // <--- NOMBRE FIJO
+                        device: "ViryScan", 
+                        tipo_scan: "INDIVIDUAL" 
+                    });
+                });
+                await b.commit();
+                setScans([]);
+                setShowScan(false);
+            };
 
             return (
-                <div className="label-layout">
-                    {/* ZONA 1: IMAGEN */}
-                    <div className="col-img">
-                        <img 
-                            src={getImageUrl(order.modelo)} 
-                            onError={(e) => { e.target.onerror = null; e.target.style.display='none'; }} 
-                            alt={order.modelo}
-                        />
+                <div className="min-h-screen flex flex-col items-center relative font-sans text-slate-800 bg-pink-50">
+                    {/* Header */}
+                    <div className="w-full bg-white/80 backdrop-blur p-4 flex justify-between items-center shadow-sm border-b border-pink-100 z-10 sticky top-0">
+                        <div className="flex items-center gap-2">
+                             <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold">V</div>
+                             <span className="font-bold-modern text-pink-600">Viry<span className="text-slate-400">Scan</span></span>
+                        </div>
+                        <button onClick={onExit} className="text-xs font-bold text-slate-400 border border-slate-200 px-3 py-1 rounded-full hover:bg-slate-100">MENÚ</button>
                     </div>
 
-                    {/* ZONA 2: DATOS */}
-                    <div className="col-data">
-                        <div className="lbl-row" style={{height: '17%'}}>
-                            <div className="lbl-col" style={{width: '65%'}}>
-                                <div className="lbl-title">MODELO</div>
-                                <div className="lbl-big">{order.modelo}</div>
-                            </div>
-                            <div className="lbl-col" style={{width: '35%'}}>
-                                <div className="lbl-title">TOTAL PEDIDO</div>
-                                <div className="lbl-medium">{order.totalPedido || '---'}</div>
-                            </div>
-                        </div>
-                        
-                        <div className="lbl-row" style={{height: '13%'}}>
-                            <div className="lbl-col" style={{width: '70%'}}>
-                                <div className="lbl-title">CLIENTE</div>
-                                <div className="lbl-std truncate">{order.cliente}</div>
-                            </div>
-                            <div className="lbl-col" style={{width: '30%'}}>
-                                <div className="lbl-title">PARTIDA</div>
-                                <div className="lbl-std">{order.partida}</div>
-                            </div>
+                    <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md px-6">
+                        <div className="text-center mb-8 animate-fade-in">
+                            <h1 className="text-4xl font-hand text-pink-600 mb-2">Modo Individual</h1>
+                            <p className="text-slate-500 text-sm">Escanea códigos de barras uno por uno.</p>
                         </div>
 
-                        {/* PIEZA */}
-                        <div className="lbl-row" style={{height: '24%', backgroundColor: '#000', color: '#FFF'}}>
-                            <div className="lbl-col" style={{width: '100%', border: 'none', alignItems: 'center', justifyContent: 'center', padding: '0', display: 'flex'}}>
-                                <span style={{fontFamily: "'Oswald', sans-serif", fontWeight: '700', fontSize: piezaFontSize, lineHeight: '1', textAlign: 'center', width: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                                    {piezaVisual}
-                                </span>
+                        <div onClick={() => setShowScan(true)} className="w-full aspect-square max-w-[250px] bg-white rounded-[3rem] shadow-[0_10px_40px_-10px_rgba(236,72,153,0.3)] border border-pink-100 flex flex-col items-center justify-center gap-4 cursor-pointer hover:scale-105 transition-all group">
+                            <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center group-hover:bg-pink-500 transition-colors">
+                                <Icon name="barcode" size={40} className="text-pink-500 group-hover:text-white" />
                             </div>
-                        </div>
-
-                        {/* Cantidades y Maquina */}
-                        <div className="lbl-row" style={{height: '24%'}}>
-                            <div className="lbl-col" style={{width: '33%', textAlign: 'center'}}>
-                                <div className="lbl-title">PAQUETE</div>
-                                <div className="lbl-big" style={{fontSize: '36px'}}>{order.paqueteNum}</div>
-                            </div>
-                            <div className="lbl-col" style={{width: '34%', backgroundColor: '#eee', textAlign: 'center'}}>
-                                <div className="lbl-title">CANTIDAD</div>
-                                <div className="lbl-big" style={{fontSize: '36px'}}>{order.cantidad}</div>
-                            </div>
-                            <div className="lbl-col" style={{width: '33%', textAlign: 'center', backgroundColor: '#000', color: '#fff'}}>
-                                <div className="lbl-title" style={{color: '#ccc'}}>MAQUINA</div>
-                                <div className="lbl-big" style={{fontSize: '48px', color: '#fff'}}>{order.maquina || '0'}</div>
-                            </div>
-                        </div>
-
-                        {/* Specs */}
-                        <div className="lbl-row" style={{height: '11%'}}>
-                            <div className="lbl-col" style={{width: '25%'}}>
-                                <div className="lbl-title" style={{fontSize:'9px'}}>TALLA</div>
-                                <div className="lbl-medium" style={{fontSize:'16px'}}>{subPiece?.talla || 'U'}</div>
-                            </div>
-                            <div className="lbl-col" style={{width: '25%'}}>
-                                <div className="lbl-title" style={{fontSize:'9px'}}>PESO(g)</div>
-                                <div className="lbl-std" style={{fontSize:'14px'}}>{subPiece?.peso || '-'}</div>
-                            </div>
-                            <div className="lbl-col" style={{width: '25%'}}>
-                                <div className="lbl-title" style={{fontSize:'9px'}}>PZS/HR</div>
-                                <div className="lbl-std" style={{fontSize:'16px'}}>{pzas1hr}</div>
-                            </div>
-                             <div className="lbl-col" style={{width: '25%'}}>
-                                <div className="lbl-title" style={{fontSize:'9px'}}>12 HRS</div>
-                                <div className="lbl-std" style={{fontSize:'16px'}}>{pzasShift}</div>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="lbl-row" style={{flexGrow: 1, borderBottom: 'none', alignItems: 'center'}}>
-                            <div style={{fontSize: '9px', width: '100%', textAlign: 'center', fontWeight: 'bold'}}>
-                                AUDITORIA ID: {order.kitId}
-                            </div>
+                            <span className="font-bold text-pink-400 uppercase tracking-widest text-xs group-hover:text-pink-600">Iniciar Escaner</span>
                         </div>
                     </div>
 
-                    {/* ZONA 3: BARCODE */}
-                    <div className="col-barcode">
-                        <div style={{transform: 'rotate(90deg)', transformOrigin: 'center', width: '3.5in', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}>
-                             <svg ref={svgRef} style={{width: '100%', height: 'auto'}}></svg>
-                             <div style={{fontSize: '10px', fontFamily: 'monospace', marginTop: '5px'}}>{barcodeValue}</div>
+                    {/* MODAL SCANNER */}
+                    {showScan && (
+                        <div className="fixed inset-0 z-[700] bg-white flex flex-col">
+                            <div className="p-4 flex justify-between items-center bg-pink-50">
+                                <h2 className="font-bold text-pink-600 text-lg">Escaneando Prendas</h2>
+                                <CloseButton onClick={() => setShowScan(false)} />
+                            </div>
+                            
+                            <div className="p-4 bg-pink-50 pb-8 rounded-b-[2rem] shadow-sm">
+                                <div className="scan-wrapper border-4 border-white shadow-lg">
+                                    <div id="reader-std"></div>
+                                    <div className="absolute top-1/2 left-[10%] right-[10%] h-0.5 bg-pink-500/50 pointer-events-none"></div>
+                                </div>
+                                <div className={`text-center mt-4 font-bold ${msg.includes('⛔') ? 'text-red-500 animate-pulse' : 'text-pink-500'}`}>
+                                    {msg}
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
+                                {scans.map((s, idx) => (
+                                    <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center">
+                                        <div>
+                                            <span className="block text-xs text-slate-400 font-mono">{s.code}</span>
+                                            <span className="font-bold text-slate-700">{s.modelo}</span>
+                                        </div>
+                                        <div className="bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">
+                                            #{s.paquete_indice}
+                                        </div>
+                                    </div>
+                                ))}
+                                {scans.length === 0 && (
+                                    <div className="text-center text-slate-300 py-10 italic">Tu lista está vacía</div>
+                                )}
+                            </div>
+
+                            <div className="p-4 border-t border-slate-100">
+                                <button onClick={confirmBatch} className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-400 text-white rounded-2xl font-bold shadow-lg shadow-pink-200 active:scale-95 transition-transform">
+                                    {scans.length > 0 ? `GUARDAR (${scans.length})` : "CANCELAR"}
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             );
         };
 
-        const App = () => {
-            const [scannedKitData, setScannedKitData] = useState(null); // Datos crudos del kit
-            const [mergedLabels, setMergedLabels] = useState([]); // Array de datos listos para renderizar papeletas
-            
-            const [isScanning, setIsScanning] = useState(false);
-            const [loading, setLoading] = useState(false);
+        // ==========================================
+        // MODO 2: KITS (ESTILO NEON FEMENINO)
+        // ==========================================
+        const KitMode = ({ onExit }) => {
+            const [scanning, setScanning] = useState(false);
+            const [scannedData, setScannedData] = useState(null);
+            const [status, setStatus] = useState("Esperando Kit...");
+            const [statusColor, setStatusColor] = useState("text-purple-300");
             const scannerRef = useRef(null);
-            const pdfExportRef = useRef();
 
-            const startScanner = () => {
-                setIsScanning(true);
-                setScannedKitData(null);
-                setMergedLabels([]);
-                setTimeout(() => {
-                    const html5QrCode = new Html5Qrcode("reader");
+            useEffect(() => {
+                if (scanning) {
+                    const html5QrCode = new Html5Qrcode("reader-kit");
                     scannerRef.current = html5QrCode;
-                    html5QrCode.start(
-                        { facingMode: "environment" },
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
+                    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
                         (decodedText) => {
-                            lookupKit(decodedText);
-                            stopScanner();
-                        }
-                    );
-                }, 300);
-            };
+                            html5QrCode.stop().then(() => {
+                                setScanning(false);
+                                processCode(decodedText);
+                            });
+                        },
+                        () => {}
+                    ).catch(err => {
+                        setScanning(false);
+                        setStatus("Error de Cámara");
+                    });
+                    return () => { try { if(scannerRef.current) scannerRef.current.stop(); } catch(e){} };
+                }
+            }, [scanning]);
 
-            const stopScanner = () => {
-                if (scannerRef.current) {
-                    scannerRef.current.stop().then(() => setIsScanning(false));
+            const processCode = async (code) => {
+                setStatus("Verificando...");
+                setStatusColor("text-yellow-300");
+                try {
+                    // 1. CHEQUEO GLOBAL DE DUPLICADOS (La regla de Viry)
+                    // Primero verificamos si el KIT en sí ya fue registrado
+                    const dupCheck = await db.collection('registro_produccion').where('kitId', '==', code).limit(1).get();
+                    if (!dupCheck.empty) {
+                        const info = dupCheck.docs[0].data();
+                        setStatus(`⛔ YA REGISTRADO POR: ${info.tejedor}`);
+                        setStatusColor("text-red-400 font-black");
+                        SOUND_ERROR.play();
+                        return;
+                    }
+
+                    // 2. Buscar datos del Kit
+                    const kitRef = db.collection('kits_datos').doc(code);
+                    const kitSnap = await kitRef.get();
+
+                    if (kitSnap.exists) {
+                        const kitDoc = kitSnap.data();
+                        setScannedData({
+                            id: code, 
+                            modelo: kitDoc.modelo, 
+                            partida: kitDoc.partida,
+                            talla: kitDoc.talla, 
+                            cantidad: kitDoc.piezas.length, 
+                            piezas: kitDoc.piezas
+                        });
+                        SOUND_SUCCESS.play();
+                        setStatus("✨ ¡Kit Encontrado!");
+                        setStatusColor("text-fuchsia-400");
+                    } else {
+                        // Si no es un kit, mostrar error porque este modo es solo para kits
+                        SOUND_ERROR.play();
+                        setStatus("❌ No es un código de Kit");
+                        setStatusColor("text-red-400");
+                        setScannedData(null);
+                    }
+                } catch (e) { 
+                    setStatus("Error de Red"); 
+                    setStatusColor("text-red-400");
                 }
             };
 
-            const lookupKit = async (kitId) => {
-                setLoading(true);
+            const confirmRegister = async () => {
+                if (!scannedData) return;
+                setStatus("Guardando...");
+                
                 try {
-                    // 1. Buscar el Kit
-                    const kitDoc = await db.collection('kits_produccion').doc(kitId).get();
+                    const batch = db.batch();
+                    const now = new Date().toISOString();
                     
-                    if (kitDoc.exists) {
-                        const kitData = kitDoc.data();
-                        setScannedKitData(kitData);
+                    scannedData.piezas.forEach(p => {
+                        const ref = db.collection('registro_produccion').doc();
+                        batch.set(ref, {
+                            codigo_paquete: p.codigoUnico,
+                            modelo: scannedData.modelo,
+                            partida: scannedData.partida,
+                            tejedor: "Viry", // <--- NOMBRE FIJO
+                            fecha: now,
+                            fecha_scan: now,
+                            orderId: p.orderId,
+                            paquete_indice: p.paqueteNum,
+                            paquete_total: 'KIT',
+                            cantidad_prendas: 1,
+                            maquina: p.maquinaOriginal || '??',
+                            kitId: scannedData.id,
+                            tipo_scan: "KIT",
+                            finished: false
+                        });
+                    });
 
-                        // 2. CRUCIAL: Buscar la Orden Maestra para obtener datos técnicos (pesos, tallas, total pedido)
-                        // Asumimos que kitData.modelo es el codigo de la orden
-                        let masterOrder = {};
-                        try {
-                            const orderSnap = await db.collection('orders')
-                                .where('codigo', '==', kitData.modelo)
-                                .limit(1)
-                                .get();
-                            
-                            if (!orderSnap.empty) {
-                                masterOrder = orderSnap.docs[0].data();
-                            }
-                        } catch (err) {
-                            console.warn("No se pudo obtener datos maestros de la orden", err);
-                        }
+                    await batch.commit();
+                    SOUND_SUCCESS.play();
 
-                        // 3. Fusionar datos (Kit + Master Order)
-                        const labels = kitData.piezas.map((piezaDelKit, index) => ({
-                            // Base data del Kit
-                            kitId: kitData.kitId,
-                            modelo: kitData.modelo,
-                            cliente: kitData.cliente,
-                            partida: kitData.partida,
-                            fechaKit: kitData.fecha,
-                            
-                            // Datos especificos de la pieza en el kit
-                            paqueteNum: piezaDelKit.paqueteNum,
-                            cantidad: piezaDelKit.cantidad,
-                            piezaNombre: piezaDelKit.piezaNombre,
-                            maquina: piezaDelKit.maquina,
-                            packageCode: piezaDelKit.codigoUnico || `${kitData.kitId}-${index}`, // Fallback
-
-                            // Datos enriquecidos de la Orden Maestra (para llenar la papeleta)
-                            totalPedido: masterOrder.totalPedido,
-                            subPiecesData: masterOrder.subPiecesData, // Aqui vienen los pesos y tallas
-                            // Si hubiese notas o fechas de entrega en masterOrder, tambien se pasan
-                        }));
-
-                        setMergedLabels(labels);
-
-                    } else {
-                        alert("Código no encontrado en la base de datos administrativa.");
-                    }
-                } catch (e) { console.error(e); alert("Error de conexión"); }
-                setLoading(false);
-            };
-
-            const generatePDF = () => {
-                const element = pdfExportRef.current;
-                const opt = { 
-                    margin: 0.2, 
-                    filename: `AUDIT_${scannedKitData.kitId}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
-                    html2canvas: { 
-                        scale: 2,
-                        useCORS: true,
-                        logging: false
-                    },
-                    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-                };
-                html2pdf().set(opt).from(element).save();
+                    setStatus("💖 ¡Kit Registrado!");
+                    setStatusColor("text-fuchsia-400 neon-glow");
+                    setTimeout(() => {
+                        setScannedData(null);
+                        setStatus("Listo para el siguiente");
+                        setStatusColor("text-purple-300");
+                        setScanning(true); // Auto reiniciar
+                    }, 2000);
+                } catch (e) { setStatus("Error al guardar"); }
             };
 
             return (
-                <div className="max-w-6xl mx-auto p-4 flex flex-col min-h-screen">
-                    {/* HEADER */}
-                    <div className="flex flex-col md:flex-row justify-between items-center mb-6 glass p-6 rounded-3xl gap-4">
-                        <div>
-                            <h1 className="text-2xl font-black tracking-tighter text-blue-400">CIRINEO AUDIT V2</h1>
-                            <p className="text-[10px] font-bold opacity-50 uppercase tracking-[0.3em]">Visualizador de Integridad de Kits</p>
-                        </div>
-                        <div className="flex gap-4">
-                            {!isScanning && (
-                                <button onClick={startScanner} className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 text-sm">
-                                    <Icon name="camera" /> ESCANEAR KIT
-                                </button>
-                            )}
-                        </div>
+                <div className="flex flex-col h-screen w-full relative bg-[#1a0b1c] text-white overflow-hidden">
+                    {/* Background decorativo */}
+                    <div className="absolute top-0 left-0 w-full h-full z-0 opacity-20 pointer-events-none" style={{background: 'radial-gradient(circle at 50% 50%, #7c3aed 0%, transparent 70%)'}}></div>
+
+                    <button onClick={onExit} className="absolute top-4 left-4 z-50 bg-white/10 backdrop-blur text-xs px-4 py-2 rounded-full border border-white/20 font-bold hover:bg-white/20 transition-all">SALIR</button>
+                    
+                    <div className="p-8 text-center relative z-10 mt-6">
+                        <h1 className="text-5xl font-hand text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-400 drop-shadow-lg">Viry Kits</h1>
+                        <p className="font-bold-modern text-purple-300 text-xs mt-2 tracking-[0.3em] uppercase">Escaneo de Paquetes</p>
                     </div>
 
-                    {/* ÁREA DE ESCÁNER */}
-                    {isScanning && (
-                        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-6">
-                            <div id="reader" className="w-full max-w-md rounded-3xl overflow-hidden border-4 border-blue-500 shadow-[0_0_50px_rgba(59,130,246,0.5)]"></div>
-                            <button onClick={stopScanner} className="mt-8 bg-red-500 px-8 py-3 rounded-full font-bold">CANCELAR</button>
+                    <div className="flex-1 px-4 flex flex-col justify-center items-center z-10">
+                        
+                        <div className="h-8 mb-4">
+                            <p className={`text-center font-bold-modern text-sm ${statusColor} transition-all`}>{status}</p>
                         </div>
-                    )}
 
-                    {/* LOADING */}
-                    {loading && <div className="flex-1 flex items-center justify-center font-bold animate-pulse">Analizando estructura del Kit...</div>}
+                        {!scanning && !scannedData && (
+                            <button onClick={() => setScanning(true)} className="group relative w-56 h-56 rounded-full bg-purple-900/30 border-2 border-fuchsia-500/50 flex flex-col items-center justify-center hover:border-fuchsia-400 hover:scale-105 transition-all duration-300 pulse-btn">
+                                <div className="absolute inset-0 rounded-full bg-fuchsia-500 blur-2xl opacity-10 group-hover:opacity-30 transition-opacity"></div>
+                                <Icon name="package-check" size={56} className="text-fuchsia-300 mb-3" />
+                                <span className="font-bold-modern text-xl text-white">Escanear Kit</span>
+                            </button>
+                        )}
 
-                    {/* RESULTADOS VISUALES */}
-                    {scannedKitData && mergedLabels.length > 0 && (
-                        <div className="flex-1 animate-in fade-in duration-500">
-                            
-                            <div className="flex justify-between items-end mb-4">
-                                <div>
-                                    <h2 className="text-xl font-bold">Contenido del Kit: {scannedKitData.kitId}</h2>
-                                    <p className="text-sm opacity-60">Se encontraron {mergedLabels.length} paquetes agrupados.</p>
-                                </div>
-                                <button onClick={generatePDF} className="bg-green-600 hover:bg-green-500 text-white font-black px-6 py-3 rounded-xl flex items-center gap-2 shadow-xl shadow-green-900/20 text-sm">
-                                    <Icon name="file-down" /> DESCARGAR PAPELETAS
-                                </button>
+                        {scanning && (
+                            <div className="w-full relative bg-black p-1 border-2 border-fuchsia-500 rounded-3xl shadow-[0_0_30px_rgba(236,72,153,0.4)] overflow-hidden">
+                                <div id="reader-kit" className="w-full h-72 rounded-2xl overflow-hidden"></div>
+                                <div className="absolute top-0 left-0 w-full h-1 bg-fuchsia-400 shadow-[0_0_15px_#e879f9] animate-[scanLine_2s_infinite]"></div>
+                                <button onClick={() => setScanning(false)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur px-6 py-2 rounded-full text-white text-xs font-bold border border-white/20">CANCELAR</button>
                             </div>
+                        )}
 
-                            {/* GRID DE PAPELETAS EN PANTALLA */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
-                                {mergedLabels.map((labelData, idx) => (
-                                    <div key={idx} className="relative group">
-                                        <div className="absolute -top-3 left-4 bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-bold z-10 shadow-md">
-                                            #{idx + 1}
-                                        </div>
-                                        <div className="h-64 w-full overflow-hidden rounded-lg shadow-2xl border border-slate-600 hover:scale-[1.02] transition-transform bg-white">
-                                            {/* Renderizamos una version escalada para preview */}
-                                            <div style={{ width: '100%', height: '100%', transform: 'scale(0.8)', transformOrigin: 'top left', width: '125%', height: '125%' }}>
-                                                 <ProductionLabel labelData={labelData} />
-                                            </div>
-                                        </div>
+                        {scannedData && (
+                            <div className="w-full max-w-sm bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-2xl relative">
+                                <div className="text-center mb-4">
+                                    <span className="inline-block bg-fuchsia-500 text-white text-[10px] font-bold px-3 py-1 rounded-full mb-2">KIT DETECTADO</span>
+                                    <h2 className="text-3xl font-bold-modern text-white leading-none">{scannedData.modelo}</h2>
+                                    <p className="text-purple-300 text-sm mt-1">{scannedData.cantidad} Prendas en total</p>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-2 mb-6 text-center">
+                                    <div className="bg-black/20 p-2 rounded-xl">
+                                        <div className="text-[10px] text-gray-400">PARTIDA</div>
+                                        <div className="text-lg font-bold text-fuchsia-300">{scannedData.partida}</div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {!scannedKitData && !loading && !isScanning && (
-                        <div className="flex-1 flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-[40px] m-4">
-                            <Icon name="qr-code" size={80} className="opacity-20 mb-4" />
-                            <p className="font-bold text-center px-10">Inicie el escáner para descomponer un Kit.</p>
-                        </div>
-                    )}
-
-                    {/* PDF HIDDEN CONTENT (PAPELETAS APILADAS PARA IMPRESIÓN) */}
-                    <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-                        <div ref={pdfExportRef} className="pdf-page-container">
-                            {/* Header del PDF (opcional, minimalista) */}
-                            <div className="text-center border-b pb-2 mb-2">
-                                <h1 className="text-xl font-bold text-black uppercase">Desglose de Kit {scannedKitData?.kitId}</h1>
-                            </div>
-                            
-                            {/* Renderizado apilado de las papeletas reales */}
-                            {mergedLabels.map((labelData, idx) => (
-                                <div key={idx} className="papeleta-wrapper">
-                                    <ProductionLabel labelData={labelData} />
+                                    <div className="bg-black/20 p-2 rounded-xl">
+                                        <div className="text-[10px] text-gray-400">TALLA</div>
+                                        <div className="text-lg font-bold text-fuchsia-300">{scannedData.talla || 'U'}</div>
+                                    </div>
                                 </div>
-                            ))}
+
+                                <div className="flex gap-3">
+                                    <button onClick={() => setScannedData(null)} className="flex-1 py-3 rounded-xl bg-gray-700/50 hover:bg-gray-700 text-gray-300 font-bold text-sm">Borrar</button>
+                                    <button onClick={confirmRegister} className="flex-[2] py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold text-sm shadow-lg shadow-fuchsia-900/50 hover:scale-105 transition-transform flex items-center justify-center gap-2">
+                                        <Icon name="check" size={16} /> REGISTRAR
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <style>{`@keyframes scanLine { 0% { top: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }`}</style>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // APP PRINCIPAL
+        // ==========================================
+        const App = () => {
+            const [view, setView] = useState('menu'); // 'menu', 'individual', 'kit'
+
+            // Control del Fondo Global
+            useEffect(() => {
+                if (view === 'individual') document.body.style.background = "#fdf2f8";
+                else if (view === 'kit') document.body.style.background = "#1a0b1c";
+                else document.body.style.background = "#000";
+            }, [view]);
+
+            if (view === 'individual') return <IndividualMode onExit={() => setView('menu')} />;
+            if (view === 'kit') return <KitMode onExit={() => setView('menu')} />;
+
+            return (
+                <div className="split-container font-sans">
+                    {/* MITAD ARRIBA: INDIVIDUAL */}
+                    <div className="split-section bg-gradient-to-b from-pink-50 to-white relative" onClick={() => setView('individual')}>
+                        <div className="text-center p-8 transition-transform hover:scale-105">
+                            <div className="w-24 h-24 mx-auto bg-pink-100 rounded-full flex items-center justify-center mb-4 shadow-xl shadow-pink-200">
+                                <Icon name="shirt" size={40} className="text-pink-400" />
+                            </div>
+                            <h2 className="text-3xl font-hand text-pink-600 mb-1">Modo Individual</h2>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Prenda por prenda</p>
+                        </div>
+                        <div className="absolute bottom-4 text-pink-300 opacity-50">
+                            <Icon name="chevron-down" size={32} />
                         </div>
                     </div>
 
+                    {/* MITAD ABAJO: KITS */}
+                    <div className="split-section bg-[#1a0b1c] relative border-t-4 border-fuchsia-900" onClick={() => setView('kit')}>
+                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
+                        <div className="text-center p-8 relative z-10 transition-transform hover:scale-105">
+                            <div className="w-24 h-24 mx-auto bg-fuchsia-900/50 rounded-full flex items-center justify-center mb-4 border border-fuchsia-500 shadow-[0_0_20px_rgba(192,38,211,0.5)]">
+                                <Icon name="layers" size={40} className="text-fuchsia-300" />
+                            </div>
+                            <h2 className="text-3xl font-hand text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-300 to-purple-300 mb-1">Modo Kits</h2>
+                            <p className="text-fuchsia-700 text-xs font-bold uppercase tracking-widest">Paquetes Completos</p>
+                        </div>
+                    </div>
                 </div>
             );
         };
