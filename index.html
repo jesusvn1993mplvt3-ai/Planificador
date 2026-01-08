@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Viry Control - Producción</title>
+    <title>Viry Control - Conectado</title>
     
-    <meta name="theme-color" content="#fdf2f8"> <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#fdf2f8">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3556/3556696.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,40 +22,28 @@
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;700&family=Montserrat:wght@400;900&display=swap" rel="stylesheet">
 
     <style>
-        /* Tipografías Femeninas */
         body { margin: 0; overflow: hidden; transition: background 0.5s ease; font-family: 'Quicksand', sans-serif; }
         .font-hand { font-family: 'Dancing Script', cursive; }
         .font-bold-modern { font-family: 'Montserrat', sans-serif; }
         
-        /* Efectos Visuales */
-        .glass-pink {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-        }
-        
-        .neon-glow {
-            text-shadow: 0 0 5px #ff77bc, 0 0 10px #ff77bc, 0 0 20px #ff00de;
-        }
-
         .scan-wrapper { width: 100%; height: 280px; border-radius: 24px; position: relative; overflow: hidden; background: #000; }
         #reader video { object-fit: cover; width: 100% !important; height: 100% !important; border-radius: 20px; }
         
-        /* Animación de carga */
         @keyframes pulse-pink {
             0%, 100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(236, 72, 153, 0); }
         }
         .pulse-btn { animation: pulse-pink 2s infinite; }
 
-        /* Estructura Split */
         .split-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
         .split-section { flex: 1; position: relative; overflow: hidden; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; }
         .split-section:active { transform: scale(0.98); }
         
-        @media (min-width: 768px) {
-            .split-container { flex-direction: row; }
-        }
+        /* Chat Animations */
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .chat-panel { animation: slideUp 0.3s ease-out; }
+
+        @media (min-width: 768px) { .split-container { flex-direction: row; } }
     </style>
 </head>
 <body>
@@ -63,7 +52,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- CONFIGURACIÓN FIREBASE (Misma configuración) ---
+        // --- CONFIGURACIÓN FIREBASE ---
         const firebaseConfig = {
             apiKey: "AIzaSyCngQL1pdqghv2vbjkPycT1Xf0C46f7jYs",
             authDomain: "cirineo-cec21.firebaseapp.com",
@@ -76,11 +65,12 @@
         const db = firebase.firestore();
 
         // --- SONIDOS ---
-        const SOUND_SUCCESS = new Audio("https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"); // Sonido suave de "campanita"
-        const SOUND_ERROR = new Audio("https://assets.mixkit.co/active_storage/sfx/944/944-preview.mp3"); // Sonido de error suave
+        const SOUND_SUCCESS = new Audio("https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3");
+        const SOUND_ERROR = new Audio("https://assets.mixkit.co/active_storage/sfx/944/944-preview.mp3");
+        const SOUND_MSG = new Audio("https://assets.mixkit.co/active_storage/sfx/2345/2345-preview.mp3"); // Sonido notificación
 
         // ==========================================
-        // COMPONENTES UTILITARIOS
+        // COMPONENTES COMUNES
         // ==========================================
         const Icon = ({ name, size = 24, className }) => {
             const r = useRef(null);
@@ -98,19 +88,170 @@
         );
 
         // ==========================================
-        // MODO 1: INDIVIDUAL (ESTILO SOFT)
+        // CHAT BIDIRECCIONAL (VIRY <-> BALTA)
         // ==========================================
-        const IndividualMode = ({ onExit }) => {
+        const WorkChat = ({ isOpen, onClose, user = "Viry", target = "Balta", theme = "light", preloadedMsg = null }) => {
+            const [messages, setMessages] = useState([]);
+            const [inputText, setInputText] = useState("");
+            const bottomRef = useRef(null);
+
+            // Cargar mensajes
+            useEffect(() => {
+                if (!isOpen) return;
+                
+                // Si hay un mensaje precargado (reporte automático), enviarlo
+                if (preloadedMsg) {
+                    sendMessage(preloadedMsg.text, preloadedMsg.attachment);
+                }
+
+                const unsub = db.collection('chat_logs')
+                    .orderBy('createdAt', 'asc')
+                    .onSnapshot(snapshot => {
+                        const msgs = snapshot.docs
+                            .map(d => ({id: d.id, ...d.data()}))
+                            .filter(m => 
+                                // Filtrar mensajes borrados por Viry
+                                !m.deletedByViry && 
+                                // Mostrar solo conversación entre ellos dos
+                                ((m.sender === user && m.recipient === target) || (m.sender === target && m.recipient === user))
+                            );
+                        setMessages(msgs);
+                        // Sonido si el último mensaje es de Balta
+                        if(msgs.length > 0) {
+                            const last = msgs[msgs.length - 1];
+                            if(last.sender === target) SOUND_MSG.play();
+                        }
+                    });
+                return () => unsub();
+            }, [isOpen]);
+
+            useEffect(() => {
+                bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [messages]);
+
+            const sendMessage = async (text, attachment = null) => {
+                if (!text && !attachment) return;
+                try {
+                    await db.collection('chat_logs').add({
+                        text: text,
+                        attachment: attachment, // Objeto con datos del reporte
+                        sender: user,
+                        recipient: target,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        deletedByViry: false,
+                        deletedByBalta: false
+                    });
+                    setInputText("");
+                } catch (e) { console.error("Error enviando", e); }
+            };
+
+            const deleteMessage = async (msgId) => {
+                // Borrado lógico: solo se oculta para Viry, persiste para Admin
+                await db.collection('chat_logs').doc(msgId).update({
+                    deletedByViry: true
+                });
+            };
+
+            if (!isOpen) return null;
+
+            const isDark = theme === "dark";
+            const bgClass = isDark ? "bg-[#1a0b1c] text-white" : "bg-pink-50 text-slate-800";
+            const bubbleMy = isDark ? "bg-fuchsia-600 text-white" : "bg-pink-500 text-white";
+            const bubbleOther = isDark ? "bg-gray-800 text-gray-200" : "bg-white text-slate-600 shadow-sm border border-slate-100";
+
+            return (
+                <div className={`fixed inset-0 z-[900] flex flex-col chat-panel ${bgClass}`}>
+                    {/* Header */}
+                    <div className={`p-4 flex justify-between items-center shadow-md z-10 ${isDark ? 'bg-black/40 border-b border-white/10' : 'bg-white/80 border-b border-pink-100'}`}>
+                        <div className="flex items-center gap-3">
+                            <div className="relative">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${isDark ? 'bg-blue-600' : 'bg-blue-100 text-blue-600'}`}>
+                                    {target[0]}
+                                </div>
+                                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-sm">Chat con {target}</h3>
+                                <span className="text-[10px] opacity-60 uppercase tracking-wider">Canal Oficial de Incidencias</span>
+                            </div>
+                        </div>
+                        <CloseButton onClick={onClose} dark={isDark} />
+                    </div>
+
+                    {/* Messages Area */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {messages.length === 0 && (
+                            <div className="text-center opacity-40 text-xs mt-10">
+                                <Icon name="message-circle" size={40} className="mb-2 mx-auto"/>
+                                <p>Inicio del historial laboral con {target}.</p>
+                                <p>Los mensajes eliminados se archivan para administración.</p>
+                            </div>
+                        )}
+                        
+                        {messages.map((msg) => {
+                            const isMe = msg.sender === user;
+                            return (
+                                <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[80%] rounded-2xl p-3 relative group ${isMe ? bubbleMy : bubbleOther} ${isMe ? 'rounded-tr-none' : 'rounded-tl-none'}`}>
+                                        
+                                        {/* Botón borrar (solo visible al hover/tap) */}
+                                        <button onClick={() => deleteMessage(msg.id)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                                            <Icon name="trash-2" size={12} />
+                                        </button>
+
+                                        {/* Attachment Card (Papeleta) */}
+                                        {msg.attachment && (
+                                            <div className={`mb-2 p-3 rounded-lg border ${isDark ? 'bg-black/30 border-white/10' : 'bg-white/90 border-pink-200'}`}>
+                                                <div className="flex items-center gap-2 mb-1 border-b border-dashed border-gray-400/30 pb-1">
+                                                    <Icon name="alert-triangle" size={14} className="text-amber-500" />
+                                                    <span className="text-[10px] font-bold uppercase text-amber-500">Incidencia Reportada</span>
+                                                </div>
+                                                <div className="text-xs space-y-1">
+                                                    <div className="font-mono font-bold">{msg.attachment.code}</div>
+                                                    <div className="opacity-80">{msg.attachment.modelo}</div>
+                                                    <div className="text-[10px] opacity-60">{new Date(msg.createdAt?.seconds * 1000).toLocaleTimeString()}</div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                        <div ref={bottomRef}></div>
+                    </div>
+
+                    {/* Input Area */}
+                    <div className={`p-3 ${isDark ? 'bg-black/40' : 'bg-white'} flex gap-2 items-end`}>
+                        <textarea 
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            placeholder={`Escribe a ${target}...`}
+                            className={`flex-1 rounded-2xl p-3 text-sm focus:outline-none resize-none h-12 py-3 ${isDark ? 'bg-gray-800 text-white placeholder-gray-500' : 'bg-gray-100 text-slate-800'}`}
+                        />
+                        <button onClick={() => sendMessage(inputText)} className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 ${isDark ? 'bg-fuchsia-600 text-white' : 'bg-pink-500 text-white'}`}>
+                            <Icon name="send" size={20} />
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==========================================
+        // MODO 1: INDIVIDUAL (CON REPORTE)
+        // ==========================================
+        const IndividualMode = ({ onExit, openChat }) => {
             const [orders, setOrders] = useState([]);
             const [showScan, setShowScan] = useState(false);
             const [scans, setScans] = useState([]);
             const [msg, setMsg] = useState("Escanea una prenda");
-            const [loading, setLoading] = useState(false);
             
-            const scansRef = useRef([]);
+            // Estado para Conflicto (cuando escaneamos algo de Balta)
+            const [conflict, setConflict] = useState(null); 
+
             const qrRef = useRef(null);
 
-            // Cargar Órdenes activas
             useEffect(() => {
                 const unsub = db.collection('orders').where('status','!=','ARCHIVADO').onSnapshot(s => {
                     setOrders(s.docs.map(d => ({...d.data(), id: d.id})));
@@ -118,174 +259,153 @@
                 return () => unsub();
             }, []);
 
-            useEffect(() => { scansRef.current = scans; }, [scans]);
+            const handleScan = async (text, html5QrCode) => {
+                const code = text.trim().toUpperCase();
+                html5QrCode.pause();
+
+                try {
+                    // 1. Chequeo Global
+                    const dupCheck = await db.collection('registro_produccion').where('codigo_paquete', '==', code).limit(1).get();
+                    
+                    if (!dupCheck.empty) {
+                        const culp = dupCheck.docs[0].data();
+                        
+                        // Si el tejedor es Balta (u otro), permitimos reportar
+                        if (culp.tejedor && culp.tejedor !== "Viry") {
+                            SOUND_ERROR.play();
+                            setMsg(`⛔ YA ESCANEADO POR: ${culp.tejedor}`);
+                            
+                            // GUARDAR CONFLICTO PARA MOSTRAR BOTÓN DE REPORTE
+                            setConflict({
+                                code: code,
+                                modelo: culp.modelo,
+                                tejedor: culp.tejedor,
+                                timestamp: new Date()
+                            });
+
+                        } else {
+                            SOUND_ERROR.play();
+                            setMsg("⛔ YA LO ESCANESTE TÚ");
+                            setTimeout(() => { setMsg("Escanea una prenda"); html5QrCode.resume(); }, 2000);
+                        }
+                        return;
+                    }
+
+                    // 2. Proceso normal si no hay duplicado
+                    let found = null;
+                    orders.forEach(o => {
+                        const p = o.progreso?.find(pkg => pkg.codigoUnico === code);
+                        if (p) found = { code, modelo: o.codigo, orderId: o.id, partida: o.partida || "S/N", paquete_indice: p.paqueteNum || 0 };
+                    });
+
+                    if (found) {
+                        SOUND_SUCCESS.play();
+                        setScans(prev => [found, ...prev]);
+                        setMsg(`🌸 ${found.modelo} Agregado`);
+                        setTimeout(() => { setMsg("Escanea una prenda"); html5QrCode.resume(); }, 1500);
+                    } else {
+                        SOUND_ERROR.play();
+                        setMsg("❌ No encontrado en pedidos");
+                        setTimeout(() => { setMsg("Escanea una prenda"); html5QrCode.resume(); }, 2000);
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    setMsg("Error conexión");
+                    html5QrCode.resume();
+                }
+            };
 
             useEffect(() => {
-                let html5QrCode;
-                if (showScan) {
-                    setTimeout(() => {
-                        html5QrCode = new Html5Qrcode("reader-std", { formatsToSupport: [Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_39], verbose: false });
-                        qrRef.current = html5QrCode;
-                        
-                        html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 280, height: 100 }, aspectRatio: 1.0 }, 
-                            async (text) => {
-                                if (loading) return;
-                                const code = text.trim().toUpperCase();
-                                
-                                // 1. Chequeo Local (Sesión actual)
-                                if (scansRef.current.some(s => s.code === code)) { return; }
-
-                                setLoading(true);
-                                html5QrCode.pause(); // Pausar cámara mientras verificamos DB
-
-                                // 2. CHEQUEO GLOBAL EN BASE DE DATOS (REGLA DE ORO)
-                                try {
-                                    const dupCheck = await db.collection('registro_produccion').where('codigo_paquete', '==', code).limit(1).get();
-                                    
-                                    if (!dupCheck.empty) {
-                                        const culp = dupCheck.docs[0].data();
-                                        SOUND_ERROR.play();
-                                        setMsg(`⛔ YA ESCANEADO POR: ${culp.tejedor || 'Desconocido'}`);
-                                        setTimeout(() => { 
-                                            setMsg("Escanea una prenda"); 
-                                            html5QrCode.resume(); 
-                                            setLoading(false); 
-                                        }, 3000);
-                                        return;
-                                    }
-
-                                    // 3. Buscar en Órdenes
-                                    let found = null;
-                                    orders.forEach(o => {
-                                        const p = o.progreso?.find(pkg => pkg.codigoUnico === code);
-                                        if (p) found = { 
-                                            code: code, codigo_paquete: code, modelo: o.codigo, 
-                                            orderId: o.id, partida: o.partida || "S/N", 
-                                            paquete_indice: p.paqueteNum || 0, paquete_total: o.progreso ? o.progreso.length : 0,
-                                            maquina: p.maquina || '?'
-                                        };
-                                    });
-
-                                    if (found) {
-                                        SOUND_SUCCESS.play();
-                                        setScans(prev => [found, ...prev]);
-                                        setMsg(`🌸 ${found.modelo} Agregado`);
-                                        setTimeout(() => {
-                                            setMsg("Escanea una prenda");
-                                            html5QrCode.resume();
-                                            setLoading(false);
-                                        }, 1500);
-                                    } else {
-                                        SOUND_ERROR.play();
-                                        setMsg("❌ No encontrado en pedidos activos");
-                                        setTimeout(() => {
-                                            setMsg("Escanea una prenda");
-                                            html5QrCode.resume();
-                                            setLoading(false);
-                                        }, 2000);
-                                    }
-
-                                } catch (e) {
-                                    console.error(e);
-                                    setMsg("Error de conexión");
-                                    html5QrCode.resume();
-                                    setLoading(false);
-                                }
-                            },
-                            () => {}
-                        ).catch(err => setMsg("Error Cámara"));
-                    }, 100);
+                if (showScan && !qrRef.current) {
+                    const qr = new Html5Qrcode("reader-std");
+                    qrRef.current = qr;
+                    qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
+                        (t) => handleScan(t, qr), () => {}
+                    );
                 }
-                return () => {
-                    if (qrRef.current && qrRef.current.isScanning) {
-                        qrRef.current.stop().then(() => qrRef.current.clear());
-                    }
-                };
+                return () => { if(qrRef.current && qrRef.current.isScanning) qrRef.current.stop(); qrRef.current = null; };
             }, [showScan, orders]);
 
             const confirmBatch = async () => {
-                if (scans.length === 0) { setShowScan(false); return; }
                 const b = db.batch();
                 scans.forEach(s => {
-                    const ref = db.collection('registro_produccion').doc();
-                    b.set(ref, { 
-                        ...s, 
-                        fecha: firebase.firestore.FieldValue.serverTimestamp(), 
-                        tejedor: "Viry",  // <--- NOMBRE FIJO
-                        device: "ViryScan", 
-                        tipo_scan: "INDIVIDUAL" 
-                    });
+                    b.set(db.collection('registro_produccion').doc(), { ...s, fecha: new Date(), tejedor: "Viry", device: "ViryScan", tipo_scan: "INDIVIDUAL" });
                 });
                 await b.commit();
-                setScans([]);
-                setShowScan(false);
+                setScans([]); setShowScan(false);
             };
 
+            // Función para reportar conflicto
+            const reportConflict = () => {
+                if (!conflict) return;
+                const reportMsg = {
+                    text: `⚠️ Hola Balta, me apareció este código que ya escaneaste tú. Revisa por favor.`,
+                    attachment: conflict
+                };
+                openChat(reportMsg); // Abrir chat con mensaje precargado
+                setConflict(null); // Limpiar conflicto
+                setMsg("Reporte enviado. Continuando...");
+                if(qrRef.current) qrRef.current.resume();
+            };
+
+            const cancelConflict = () => {
+                setConflict(null);
+                setMsg("Escanea una prenda");
+                if(qrRef.current) qrRef.current.resume();
+            }
+
             return (
-                <div className="min-h-screen flex flex-col items-center relative font-sans text-slate-800 bg-pink-50">
-                    {/* Header */}
+                <div className="min-h-screen flex flex-col items-center bg-pink-50 relative">
+                    {/* Header Individual */}
                     <div className="w-full bg-white/80 backdrop-blur p-4 flex justify-between items-center shadow-sm border-b border-pink-100 z-10 sticky top-0">
                         <div className="flex items-center gap-2">
                              <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-white font-bold">V</div>
                              <span className="font-bold-modern text-pink-600">Viry<span className="text-slate-400">Scan</span></span>
                         </div>
-                        <button onClick={onExit} className="text-xs font-bold text-slate-400 border border-slate-200 px-3 py-1 rounded-full hover:bg-slate-100">MENÚ</button>
+                        <button onClick={onExit} className="text-xs font-bold text-slate-400 border border-slate-200 px-3 py-1 rounded-full">MENÚ</button>
                     </div>
 
                     <div className="flex-1 flex flex-col items-center justify-center w-full max-w-md px-6">
-                        <div className="text-center mb-8 animate-fade-in">
-                            <h1 className="text-4xl font-hand text-pink-600 mb-2">Modo Individual</h1>
-                            <p className="text-slate-500 text-sm">Escanea códigos de barras uno por uno.</p>
-                        </div>
-
                         <div onClick={() => setShowScan(true)} className="w-full aspect-square max-w-[250px] bg-white rounded-[3rem] shadow-[0_10px_40px_-10px_rgba(236,72,153,0.3)] border border-pink-100 flex flex-col items-center justify-center gap-4 cursor-pointer hover:scale-105 transition-all group">
-                            <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center group-hover:bg-pink-500 transition-colors">
-                                <Icon name="barcode" size={40} className="text-pink-500 group-hover:text-white" />
-                            </div>
-                            <span className="font-bold text-pink-400 uppercase tracking-widest text-xs group-hover:text-pink-600">Iniciar Escaner</span>
+                            <Icon name="barcode" size={40} className="text-pink-500 group-hover:text-pink-600" />
+                            <span className="font-bold text-pink-400">INICIAR ESCANER</span>
                         </div>
                     </div>
 
-                    {/* MODAL SCANNER */}
                     {showScan && (
                         <div className="fixed inset-0 z-[700] bg-white flex flex-col">
                             <div className="p-4 flex justify-between items-center bg-pink-50">
-                                <h2 className="font-bold text-pink-600 text-lg">Escaneando Prendas</h2>
+                                <h2 className="font-bold text-pink-600">Escaneando</h2>
                                 <CloseButton onClick={() => setShowScan(false)} />
                             </div>
-                            
                             <div className="p-4 bg-pink-50 pb-8 rounded-b-[2rem] shadow-sm">
-                                <div className="scan-wrapper border-4 border-white shadow-lg">
-                                    <div id="reader-std"></div>
-                                    <div className="absolute top-1/2 left-[10%] right-[10%] h-0.5 bg-pink-500/50 pointer-events-none"></div>
-                                </div>
-                                <div className={`text-center mt-4 font-bold ${msg.includes('⛔') ? 'text-red-500 animate-pulse' : 'text-pink-500'}`}>
-                                    {msg}
-                                </div>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white">
-                                {scans.map((s, idx) => (
-                                    <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center">
-                                        <div>
-                                            <span className="block text-xs text-slate-400 font-mono">{s.code}</span>
-                                            <span className="font-bold text-slate-700">{s.modelo}</span>
-                                        </div>
-                                        <div className="bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-xs font-bold">
-                                            #{s.paquete_indice}
+                                <div className="scan-wrapper border-4 border-white shadow-lg"><div id="reader-std"></div></div>
+                                
+                                {/* UI DE CONFLICTO */}
+                                {conflict ? (
+                                    <div className="mt-4 bg-red-50 border border-red-100 p-4 rounded-xl animate-bounce-small">
+                                        <p className="text-red-500 font-bold text-center text-sm mb-2">{msg}</p>
+                                        <div className="flex gap-2">
+                                            <button onClick={cancelConflict} className="flex-1 py-2 bg-gray-200 text-gray-600 rounded-lg text-xs font-bold">IGNORAR</button>
+                                            <button onClick={reportConflict} className="flex-1 py-2 bg-red-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-red-200">
+                                                <Icon name="message-square-warning" size={16}/> AVISAR A BALTA
+                                            </button>
                                         </div>
                                     </div>
-                                ))}
-                                {scans.length === 0 && (
-                                    <div className="text-center text-slate-300 py-10 italic">Tu lista está vacía</div>
+                                ) : (
+                                    <div className="text-center mt-4 font-bold text-pink-500">{msg}</div>
                                 )}
                             </div>
-
-                            <div className="p-4 border-t border-slate-100">
-                                <button onClick={confirmBatch} className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-400 text-white rounded-2xl font-bold shadow-lg shadow-pink-200 active:scale-95 transition-transform">
-                                    {scans.length > 0 ? `GUARDAR (${scans.length})` : "CANCELAR"}
-                                </button>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                {scans.map((s, idx) => (
+                                    <div key={idx} className="bg-white p-3 rounded-xl border border-pink-100 shadow-sm flex justify-between">
+                                        <span className="font-bold text-slate-700">{s.modelo}</span>
+                                        <span className="text-xs bg-pink-100 text-pink-600 px-2 py-1 rounded">#{s.paquete_indice}</span>
+                                    </div>
+                                ))}
                             </div>
+                            <div className="p-4"><button onClick={confirmBatch} className="w-full py-4 bg-pink-500 text-white rounded-xl font-bold">GUARDAR ({scans.length})</button></div>
                         </div>
                     )}
                 </div>
@@ -293,185 +413,123 @@
         };
 
         // ==========================================
-        // MODO 2: KITS (ESTILO NEON FEMENINO)
+        // MODO 2: KITS (CON REPORTE)
         // ==========================================
-        const KitMode = ({ onExit }) => {
+        const KitMode = ({ onExit, openChat }) => {
             const [scanning, setScanning] = useState(false);
             const [scannedData, setScannedData] = useState(null);
             const [status, setStatus] = useState("Esperando Kit...");
-            const [statusColor, setStatusColor] = useState("text-purple-300");
-            const scannerRef = useRef(null);
+            const [conflict, setConflict] = useState(null);
 
             useEffect(() => {
                 if (scanning) {
-                    const html5QrCode = new Html5Qrcode("reader-kit");
-                    scannerRef.current = html5QrCode;
-                    html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
-                        (decodedText) => {
-                            html5QrCode.stop().then(() => {
-                                setScanning(false);
-                                processCode(decodedText);
-                            });
-                        },
+                    const qr = new Html5Qrcode("reader-kit");
+                    qr.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, 
+                        async (code) => {
+                            qr.stop(); setScanning(false);
+                            
+                            // Verificar Duplicado
+                            const dup = await db.collection('registro_produccion').where('kitId', '==', code).limit(1).get();
+                            if (!dup.empty) {
+                                const info = dup.docs[0].data();
+                                SOUND_ERROR.play();
+                                setStatus(`⛔ YA REGISTRADO POR: ${info.tejedor}`);
+                                
+                                if(info.tejedor !== "Viry") {
+                                    setConflict({
+                                        code: code,
+                                        modelo: info.modelo || "Kit Desconocido",
+                                        tejedor: info.tejedor,
+                                        timestamp: new Date()
+                                    });
+                                }
+                                return;
+                            }
+
+                            // Buscar Kit
+                            const k = await db.collection('kits_datos').doc(code).get();
+                            if (k.exists) {
+                                SOUND_SUCCESS.play();
+                                const d = k.data();
+                                setScannedData({ id: code, ...d, cantidad: d.piezas.length });
+                                setStatus("✨ ¡Kit Encontrado!");
+                            } else {
+                                SOUND_ERROR.play();
+                                setStatus("❌ No es un Kit válido");
+                            }
+                        }, 
                         () => {}
-                    ).catch(err => {
-                        setScanning(false);
-                        setStatus("Error de Cámara");
-                    });
-                    return () => { try { if(scannerRef.current) scannerRef.current.stop(); } catch(e){} };
+                    );
+                    return () => { try { qr.stop(); } catch(e){} };
                 }
             }, [scanning]);
 
-            const processCode = async (code) => {
-                setStatus("Verificando...");
-                setStatusColor("text-yellow-300");
-                try {
-                    // 1. CHEQUEO GLOBAL DE DUPLICADOS (La regla de Viry)
-                    // Primero verificamos si el KIT en sí ya fue registrado
-                    const dupCheck = await db.collection('registro_produccion').where('kitId', '==', code).limit(1).get();
-                    if (!dupCheck.empty) {
-                        const info = dupCheck.docs[0].data();
-                        setStatus(`⛔ YA REGISTRADO POR: ${info.tejedor}`);
-                        setStatusColor("text-red-400 font-black");
-                        SOUND_ERROR.play();
-                        return;
-                    }
-
-                    // 2. Buscar datos del Kit
-                    const kitRef = db.collection('kits_datos').doc(code);
-                    const kitSnap = await kitRef.get();
-
-                    if (kitSnap.exists) {
-                        const kitDoc = kitSnap.data();
-                        setScannedData({
-                            id: code, 
-                            modelo: kitDoc.modelo, 
-                            partida: kitDoc.partida,
-                            talla: kitDoc.talla, 
-                            cantidad: kitDoc.piezas.length, 
-                            piezas: kitDoc.piezas
-                        });
-                        SOUND_SUCCESS.play();
-                        setStatus("✨ ¡Kit Encontrado!");
-                        setStatusColor("text-fuchsia-400");
-                    } else {
-                        // Si no es un kit, mostrar error porque este modo es solo para kits
-                        SOUND_ERROR.play();
-                        setStatus("❌ No es un código de Kit");
-                        setStatusColor("text-red-400");
-                        setScannedData(null);
-                    }
-                } catch (e) { 
-                    setStatus("Error de Red"); 
-                    setStatusColor("text-red-400");
-                }
+            const reportConflict = () => {
+                if (!conflict) return;
+                openChat({
+                    text: `⚠️ Hola Balta, intenté registrar este KIT pero aparece a tu nombre.`,
+                    attachment: conflict
+                });
+                setConflict(null);
+                setStatus("Reporte enviado");
             };
 
             const confirmRegister = async () => {
                 if (!scannedData) return;
-                setStatus("Guardando...");
-                
-                try {
-                    const batch = db.batch();
-                    const now = new Date().toISOString();
-                    
-                    scannedData.piezas.forEach(p => {
-                        const ref = db.collection('registro_produccion').doc();
-                        batch.set(ref, {
-                            codigo_paquete: p.codigoUnico,
-                            modelo: scannedData.modelo,
-                            partida: scannedData.partida,
-                            tejedor: "Viry", // <--- NOMBRE FIJO
-                            fecha: now,
-                            fecha_scan: now,
-                            orderId: p.orderId,
-                            paquete_indice: p.paqueteNum,
-                            paquete_total: 'KIT',
-                            cantidad_prendas: 1,
-                            maquina: p.maquinaOriginal || '??',
-                            kitId: scannedData.id,
-                            tipo_scan: "KIT",
-                            finished: false
-                        });
+                const b = db.batch();
+                scannedData.piezas.forEach(p => {
+                    b.set(db.collection('registro_produccion').doc(), {
+                        codigo_paquete: p.codigoUnico, modelo: scannedData.modelo, partida: scannedData.partida,
+                        tejedor: "Viry", fecha: new Date(), kitId: scannedData.id, tipo_scan: "KIT"
                     });
-
-                    await batch.commit();
-                    SOUND_SUCCESS.play();
-
-                    setStatus("💖 ¡Kit Registrado!");
-                    setStatusColor("text-fuchsia-400 neon-glow");
-                    setTimeout(() => {
-                        setScannedData(null);
-                        setStatus("Listo para el siguiente");
-                        setStatusColor("text-purple-300");
-                        setScanning(true); // Auto reiniciar
-                    }, 2000);
-                } catch (e) { setStatus("Error al guardar"); }
+                });
+                await b.commit();
+                SOUND_SUCCESS.play();
+                setScannedData(null); setStatus("💖 Kit Registrado");
             };
 
             return (
-                <div className="flex flex-col h-screen w-full relative bg-[#1a0b1c] text-white overflow-hidden">
-                    {/* Background decorativo */}
-                    <div className="absolute top-0 left-0 w-full h-full z-0 opacity-20 pointer-events-none" style={{background: 'radial-gradient(circle at 50% 50%, #7c3aed 0%, transparent 70%)'}}></div>
-
-                    <button onClick={onExit} className="absolute top-4 left-4 z-50 bg-white/10 backdrop-blur text-xs px-4 py-2 rounded-full border border-white/20 font-bold hover:bg-white/20 transition-all">SALIR</button>
+                <div className="flex flex-col h-screen w-full relative bg-[#1a0b1c] text-white">
+                    <button onClick={onExit} className="absolute top-4 left-4 z-50 bg-white/10 px-4 py-2 rounded-full text-xs font-bold border border-white/20">SALIR</button>
                     
-                    <div className="p-8 text-center relative z-10 mt-6">
-                        <h1 className="text-5xl font-hand text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-400 drop-shadow-lg">Viry Kits</h1>
-                        <p className="font-bold-modern text-purple-300 text-xs mt-2 tracking-[0.3em] uppercase">Escaneo de Paquetes</p>
+                    <div className="p-8 text-center mt-6">
+                        <h1 className="text-5xl font-hand text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-400 to-purple-400">Viry Kits</h1>
                     </div>
 
-                    <div className="flex-1 px-4 flex flex-col justify-center items-center z-10">
-                        
-                        <div className="h-8 mb-4">
-                            <p className={`text-center font-bold-modern text-sm ${statusColor} transition-all`}>{status}</p>
-                        </div>
+                    <div className="flex-1 px-4 flex flex-col justify-center items-center relative z-10">
+                        <p className="mb-4 font-bold text-purple-300">{status}</p>
 
-                        {!scanning && !scannedData && (
-                            <button onClick={() => setScanning(true)} className="group relative w-56 h-56 rounded-full bg-purple-900/30 border-2 border-fuchsia-500/50 flex flex-col items-center justify-center hover:border-fuchsia-400 hover:scale-105 transition-all duration-300 pulse-btn">
-                                <div className="absolute inset-0 rounded-full bg-fuchsia-500 blur-2xl opacity-10 group-hover:opacity-30 transition-opacity"></div>
+                        {/* UI CONFLICTO KIT */}
+                        {conflict && (
+                            <div className="mb-6 w-full max-w-sm bg-red-900/50 border border-red-500 p-4 rounded-xl text-center backdrop-blur-md">
+                                <p className="text-red-300 text-xs mb-3">El sistema detectó que Balta ya escaneó este paquete.</p>
+                                <button onClick={reportConflict} className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+                                    <Icon name="bell-ring" size={18} /> NOTIFICAR A BALTA
+                                </button>
+                                <button onClick={() => setConflict(null)} className="mt-2 text-xs text-red-300 underline">Ignorar y cerrar</button>
+                            </div>
+                        )}
+
+                        {!scanning && !scannedData && !conflict && (
+                            <button onClick={() => setScanning(true)} className="w-56 h-56 rounded-full bg-purple-900/30 border-2 border-fuchsia-500/50 flex flex-col items-center justify-center pulse-btn">
                                 <Icon name="package-check" size={56} className="text-fuchsia-300 mb-3" />
-                                <span className="font-bold-modern text-xl text-white">Escanear Kit</span>
+                                <span className="text-xl font-bold text-white">Escanear Kit</span>
                             </button>
                         )}
 
-                        {scanning && (
-                            <div className="w-full relative bg-black p-1 border-2 border-fuchsia-500 rounded-3xl shadow-[0_0_30px_rgba(236,72,153,0.4)] overflow-hidden">
-                                <div id="reader-kit" className="w-full h-72 rounded-2xl overflow-hidden"></div>
-                                <div className="absolute top-0 left-0 w-full h-1 bg-fuchsia-400 shadow-[0_0_15px_#e879f9] animate-[scanLine_2s_infinite]"></div>
-                                <button onClick={() => setScanning(false)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur px-6 py-2 rounded-full text-white text-xs font-bold border border-white/20">CANCELAR</button>
-                            </div>
-                        )}
+                        {scanning && <div id="reader-kit" className="w-full max-w-sm h-72 rounded-2xl overflow-hidden border-2 border-fuchsia-500"></div>}
 
                         {scannedData && (
-                            <div className="w-full max-w-sm bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-3xl shadow-2xl relative">
-                                <div className="text-center mb-4">
-                                    <span className="inline-block bg-fuchsia-500 text-white text-[10px] font-bold px-3 py-1 rounded-full mb-2">KIT DETECTADO</span>
-                                    <h2 className="text-3xl font-bold-modern text-white leading-none">{scannedData.modelo}</h2>
-                                    <p className="text-purple-300 text-sm mt-1">{scannedData.cantidad} Prendas en total</p>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-2 mb-6 text-center">
-                                    <div className="bg-black/20 p-2 rounded-xl">
-                                        <div className="text-[10px] text-gray-400">PARTIDA</div>
-                                        <div className="text-lg font-bold text-fuchsia-300">{scannedData.partida}</div>
-                                    </div>
-                                    <div className="bg-black/20 p-2 rounded-xl">
-                                        <div className="text-[10px] text-gray-400">TALLA</div>
-                                        <div className="text-lg font-bold text-fuchsia-300">{scannedData.talla || 'U'}</div>
-                                    </div>
-                                </div>
-
+                            <div className="w-full max-w-sm bg-white/10 backdrop-blur border border-white/10 p-6 rounded-3xl">
+                                <h2 className="text-3xl font-bold mb-2">{scannedData.modelo}</h2>
+                                <p className="text-purple-300 text-sm mb-6">{scannedData.cantidad} Prendas</p>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setScannedData(null)} className="flex-1 py-3 rounded-xl bg-gray-700/50 hover:bg-gray-700 text-gray-300 font-bold text-sm">Borrar</button>
-                                    <button onClick={confirmRegister} className="flex-[2] py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold text-sm shadow-lg shadow-fuchsia-900/50 hover:scale-105 transition-transform flex items-center justify-center gap-2">
-                                        <Icon name="check" size={16} /> REGISTRAR
-                                    </button>
+                                    <button onClick={() => setScannedData(null)} className="flex-1 py-3 bg-white/10 rounded-xl font-bold">Cancelar</button>
+                                    <button onClick={confirmRegister} className="flex-[2] py-3 bg-gradient-to-r from-fuchsia-600 to-purple-600 rounded-xl font-bold shadow-lg">REGISTRAR</button>
                                 </div>
                             </div>
                         )}
                     </div>
-                    <style>{`@keyframes scanLine { 0% { top: 0%; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }`}</style>
                 </div>
             );
         };
@@ -480,45 +538,65 @@
         // APP PRINCIPAL
         // ==========================================
         const App = () => {
-            const [view, setView] = useState('menu'); // 'menu', 'individual', 'kit'
+            const [view, setView] = useState('menu');
+            const [chatOpen, setChatOpen] = useState(false);
+            const [chatPreload, setChatPreload] = useState(null);
 
-            // Control del Fondo Global
-            useEffect(() => {
-                if (view === 'individual') document.body.style.background = "#fdf2f8";
-                else if (view === 'kit') document.body.style.background = "#1a0b1c";
-                else document.body.style.background = "#000";
-            }, [view]);
+            // Manejar apertura de chat (posiblemente con mensaje automático)
+            const openChat = (preloadMsg = null) => {
+                if (preloadMsg) setChatPreload(preloadMsg);
+                else setChatPreload(null);
+                setChatOpen(true);
+            };
 
-            if (view === 'individual') return <IndividualMode onExit={() => setView('menu')} />;
-            if (view === 'kit') return <KitMode onExit={() => setView('menu')} />;
+            const chatTheme = view === 'kit' ? 'dark' : 'light';
 
             return (
-                <div className="split-container font-sans">
-                    {/* MITAD ARRIBA: INDIVIDUAL */}
-                    <div className="split-section bg-gradient-to-b from-pink-50 to-white relative" onClick={() => setView('individual')}>
-                        <div className="text-center p-8 transition-transform hover:scale-105">
-                            <div className="w-24 h-24 mx-auto bg-pink-100 rounded-full flex items-center justify-center mb-4 shadow-xl shadow-pink-200">
-                                <Icon name="shirt" size={40} className="text-pink-400" />
+                <div className="split-container font-sans relative">
+                    
+                    {/* VISTA: MENU */}
+                    {view === 'menu' && (
+                        <>
+                            <div className="split-section bg-pink-50" onClick={() => setView('individual')}>
+                                <div className="text-center">
+                                    <div className="w-20 h-20 mx-auto bg-pink-100 rounded-full flex items-center justify-center mb-4"><Icon name="shirt" size={32} className="text-pink-500"/></div>
+                                    <h2 className="text-3xl font-hand text-pink-600">Individual</h2>
+                                </div>
                             </div>
-                            <h2 className="text-3xl font-hand text-pink-600 mb-1">Modo Individual</h2>
-                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Prenda por prenda</p>
-                        </div>
-                        <div className="absolute bottom-4 text-pink-300 opacity-50">
-                            <Icon name="chevron-down" size={32} />
-                        </div>
-                    </div>
+                            <div className="split-section bg-[#1a0b1c] border-t-4 border-fuchsia-900" onClick={() => setView('kit')}>
+                                <div className="text-center">
+                                    <div className="w-20 h-20 mx-auto bg-fuchsia-900/50 rounded-full flex items-center justify-center mb-4 border border-fuchsia-500"><Icon name="layers" size={32} className="text-fuchsia-300"/></div>
+                                    <h2 className="text-3xl font-hand text-fuchsia-300">Kits</h2>
+                                </div>
+                            </div>
+                        </>
+                    )}
 
-                    {/* MITAD ABAJO: KITS */}
-                    <div className="split-section bg-[#1a0b1c] relative border-t-4 border-fuchsia-900" onClick={() => setView('kit')}>
-                        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30"></div>
-                        <div className="text-center p-8 relative z-10 transition-transform hover:scale-105">
-                            <div className="w-24 h-24 mx-auto bg-fuchsia-900/50 rounded-full flex items-center justify-center mb-4 border border-fuchsia-500 shadow-[0_0_20px_rgba(192,38,211,0.5)]">
-                                <Icon name="layers" size={40} className="text-fuchsia-300" />
-                            </div>
-                            <h2 className="text-3xl font-hand text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-300 to-purple-300 mb-1">Modo Kits</h2>
-                            <p className="text-fuchsia-700 text-xs font-bold uppercase tracking-widest">Paquetes Completos</p>
-                        </div>
-                    </div>
+                    {/* VISTAS: MODOS DE TRABAJO */}
+                    {view === 'individual' && <IndividualMode onExit={() => setView('menu')} openChat={openChat} />}
+                    {view === 'kit' && <KitMode onExit={() => setView('menu')} openChat={openChat} />}
+
+                    {/* --- BOTÓN FLOTANTE DEL CHAT (GLOBAL) --- */}
+                    {!chatOpen && view !== 'menu' && (
+                        <button 
+                            onClick={() => openChat()} 
+                            className={`fixed bottom-6 right-6 z-[800] w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 ${view === 'kit' ? 'bg-fuchsia-600 text-white shadow-fuchsia-900/50' : 'bg-pink-500 text-white shadow-pink-300'}`}
+                        >
+                            <Icon name="message-circle" size={28} />
+                            {/* Indicador de "Online" simulado */}
+                            <span className="absolute top-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></span>
+                        </button>
+                    )}
+
+                    {/* --- COMPONENTE CHAT --- */}
+                    <WorkChat 
+                        isOpen={chatOpen} 
+                        onClose={() => setChatOpen(false)} 
+                        theme={chatTheme}
+                        preloadedMsg={chatPreload}
+                        user="Viry"
+                        target="Balta"
+                    />
                 </div>
             );
         };
